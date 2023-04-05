@@ -50,6 +50,10 @@ impl CNFFormula {
         other.clauses.append(&mut self.clauses);
     }
 
+    pub(crate) fn add_vars(&mut self, n: usize) {
+        self.n_vars += n;
+    }
+
     pub(crate) fn add_offset(&mut self, offset: usize) {
         self.n_vars += offset;
         self.clauses.iter_mut().for_each(|cl| {
@@ -90,6 +94,12 @@ impl CNFFormula {
         })?;
         Ok(())
     }
+}
+
+pub trait ToCNFFormula {
+    fn to_cnf_formula(&self) -> CNFFormula;
+
+    fn n_vars(&self) -> usize;
 }
 
 #[cfg(test)]
