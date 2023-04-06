@@ -154,15 +154,21 @@ fn encode_rank_value(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::DiscrepancyEncoding;
+    use crate::{CNFDimacsReader, CNFDimacsWriter, DiscrepancyEncoding};
     use std::io::BufWriter;
 
     #[test]
     fn test_xor() {
-        let prevalent = CNFFormula::from_dimacs("p cnf 2 2\n-1 -2 0\n1 2 0\n".as_bytes()).unwrap();
+        let prevalent = CNFDimacsReader::default()
+            .read("p cnf 2 2\n-1 -2 0\n1 2 0\n".as_bytes())
+            .unwrap();
         let dominated = vec![
-            CNFFormula::from_dimacs("p cnf 2 1\n1 0\n".as_bytes()).unwrap(),
-            CNFFormula::from_dimacs("p cnf 2 1\n2 0\n".as_bytes()).unwrap(),
+            CNFDimacsReader::default()
+                .read("p cnf 2 1\n1 0\n".as_bytes())
+                .unwrap(),
+            CNFDimacsReader::default()
+                .read("p cnf 2 1\n2 0\n".as_bytes())
+                .unwrap(),
         ];
         let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &dominated);
         let objectives = discrepancy_encoding
@@ -177,9 +183,8 @@ mod tests {
             DrasticDistanceEncoding::new(&discrepancy_encoding, objectives);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(18, drastic_distance_encoding.n_vars());
-        drastic_distance_encoding
-            .to_cnf_formula()
-            .to_dimacs(&mut writer)
+        CNFDimacsWriter::default()
+            .write(&mut writer, &drastic_distance_encoding.to_cnf_formula())
             .unwrap();
         let expected = r#"p cnf 18 26
 -1 -2 0
@@ -218,14 +223,13 @@ mod tests {
     #[test]
     fn test_no_objectives() {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
-        let prevalent = CNFFormula::from_dimacs(dimacs.as_bytes()).unwrap();
+        let prevalent = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
         let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &[]);
         let drastic_distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, vec![]);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(2, drastic_distance_encoding.n_vars());
-        drastic_distance_encoding
-            .to_cnf_formula()
-            .to_dimacs(&mut writer)
+        CNFDimacsWriter::default()
+            .write(&mut writer, &drastic_distance_encoding.to_cnf_formula())
             .unwrap();
         assert_eq!(
             dimacs,

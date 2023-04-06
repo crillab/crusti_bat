@@ -1,3 +1,4 @@
+use crate::{CNFFormula, Clause, MergingProblem, Variable, Weighted};
 use anyhow::{anyhow, Context, Result};
 use rustc_hash::FxHashMap;
 use std::{
@@ -7,7 +8,6 @@ use std::{
     rc::Rc,
     str::SplitWhitespace,
 };
-use crate::{CNFFormula, Clause, MergingProblem, Variable, Weighted};
 
 #[derive(Default)]
 pub struct MergingDimacsReader;
@@ -234,9 +234,9 @@ fn read_belief_base_weight(words: &mut SplitWhitespace) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::BufWriter;
-
     use super::*;
+    use crate::CNFDimacsWriter;
+    use std::io::BufWriter;
 
     #[test]
     fn test_empty_instance() {
@@ -436,7 +436,9 @@ mod tests {
 
     fn assert_cnf_eq(expected: &str, actual: &CNFFormula) {
         let mut writer = BufWriter::new(Vec::new());
-        actual.to_dimacs(&mut writer).unwrap();
+        CNFDimacsWriter::default()
+            .write(&mut writer, actual)
+            .unwrap();
         assert_eq!(
             expected,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()

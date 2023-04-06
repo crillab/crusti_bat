@@ -82,14 +82,21 @@ impl ToCNFFormula for RenamedCNFFormula<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{CNFDimacsReader, CNFDimacsWriter};
     use std::io::BufWriter;
 
     #[test]
     fn test_xor() {
-        let prevalent = CNFFormula::from_dimacs("p cnf 2 2\n-1 -2 0\n1 2 0\n".as_bytes()).unwrap();
+        let prevalent = CNFDimacsReader::default()
+            .read("p cnf 2 2\n-1 -2 0\n1 2 0\n".as_bytes())
+            .unwrap();
         let dominated = vec![
-            CNFFormula::from_dimacs("p cnf 2 1\n1 0\n".as_bytes()).unwrap(),
-            CNFFormula::from_dimacs("p cnf 2 1\n2 0\n".as_bytes()).unwrap(),
+            CNFDimacsReader::default()
+                .read("p cnf 2 1\n1 0\n".as_bytes())
+                .unwrap(),
+            CNFDimacsReader::default()
+                .read("p cnf 2 1\n2 0\n".as_bytes())
+                .unwrap(),
         ];
         let encoding = DiscrepancyEncoding::new(&prevalent, &dominated);
         let mut writer = BufWriter::new(Vec::new());
@@ -100,7 +107,9 @@ mod tests {
                 .discrepancy_var_ranges()
                 .collect::<Vec<Range<usize>>>()
         );
-        encoding.to_cnf_formula().to_dimacs(&mut writer).unwrap();
+        CNFDimacsWriter::default()
+            .write(&mut writer, &encoding.to_cnf_formula())
+            .unwrap();
         let expected = r#"p cnf 10 12
 -1 -2 0
 1 2 0
@@ -124,12 +133,14 @@ mod tests {
     #[test]
     fn test_no_profile() {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
-        let prevalent = CNFFormula::from_dimacs(dimacs.as_bytes()).unwrap();
+        let prevalent = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
         let encoding = DiscrepancyEncoding::new(&prevalent, &[]);
         assert_eq!(2, encoding.n_vars());
         assert_eq!(0, encoding.discrepancy_var_ranges().count());
         let mut writer = BufWriter::new(Vec::new());
-        encoding.to_cnf_formula().to_dimacs(&mut writer).unwrap();
+        CNFDimacsWriter::default()
+            .write(&mut writer, &encoding.to_cnf_formula())
+            .unwrap();
         assert_eq!(
             dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()

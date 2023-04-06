@@ -12,4 +12,6 @@ pub use encodings::DiscrepancyEncoding;
 pub use encodings::DrasticDistanceEncoding;
 
 mod io;
+pub use io::CNFDimacsReader;
+pub use io::CNFDimacsWriter;
 pub use io::MergingDimacsReader;
