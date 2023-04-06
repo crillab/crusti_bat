@@ -39,8 +39,8 @@ impl ToCNFFormula for DiscrepancyEncoding<'_> {
                 let var = i as isize;
                 let renamed_var = renamed.renamed_var_of(i) as isize;
                 let discrepancy_var = renamed.discrepancy_var_of(i) as isize;
-                cnf_formula.add_clause(vec![discrepancy_var, -renamed_var, var]);
-                cnf_formula.add_clause(vec![discrepancy_var, renamed_var, -var]);
+                cnf_formula.add_clause_unchecked(vec![discrepancy_var, -renamed_var, var]);
+                cnf_formula.add_clause_unchecked(vec![discrepancy_var, renamed_var, -var]);
             });
         });
         cnf_formula
@@ -117,6 +117,21 @@ mod tests {
 "#;
         assert_eq!(
             expected,
+            String::from_utf8(writer.into_inner().unwrap()).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_no_profile() {
+        let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
+        let prevalent = CNFFormula::from_dimacs(dimacs.as_bytes()).unwrap();
+        let encoding = DiscrepancyEncoding::new(&prevalent, &[]);
+        assert_eq!(2, encoding.n_vars());
+        assert_eq!(0, encoding.discrepancy_var_ranges().count());
+        let mut writer = BufWriter::new(Vec::new());
+        encoding.to_cnf_formula().to_dimacs(&mut writer).unwrap();
+        assert_eq!(
+            dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
         )
     }

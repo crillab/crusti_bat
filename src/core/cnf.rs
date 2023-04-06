@@ -15,6 +15,21 @@ pub struct CNFFormula {
 }
 
 impl CNFFormula {
+    /// Returns a new CNF formula initialized with the given number of variables and the given clauses.
+    ///
+    /// # Panics
+    ///
+    /// In case the clause involves variable indexes that are higher than the provided number of variables, this function panics.
+    pub fn new_from_clauses(n_vars: usize, clauses: Vec<Clause>) -> Self {
+        clauses.iter().for_each(|cl| check_clause(cl, n_vars));
+        Self::new_from_clauses_unchecked(n_vars, clauses)
+    }
+
+    pub(crate) fn new_from_clauses_unchecked(n_vars: usize, clauses: Vec<Clause>) -> Self {
+        clauses.iter().for_each(|cl| check_clause(cl, n_vars));
+        Self { n_vars, clauses }
+    }
+
     /// Returns the number of variables associated with this CNF formula.
     ///
     /// The number of variables is typically set when the CNF formula is created, and updated by relevant functions.
@@ -34,9 +49,11 @@ impl CNFFormula {
     ///
     /// In case the clause involves variable indexes that are higher than the number of variables associated with this CNF formula, this function panics.
     pub fn add_clause(&mut self, clause: Clause) {
-        if clause.iter().any(|l| l.abs() > self.n_vars as isize) {
-            panic!("variable index is higher than n_vars");
-        }
+        check_clause(&clause, self.n_vars);
+        self.add_clause_unchecked(clause);
+    }
+
+    pub(crate) fn add_clause_unchecked(&mut self, clause: Clause) {
         self.clauses.push(clause);
     }
 
@@ -93,6 +110,12 @@ impl CNFFormula {
             writeln!(writer, "0")
         })?;
         Ok(())
+    }
+}
+
+fn check_clause(clause: &Clause, n_vars: usize) {
+    if clause.iter().any(|l| l.abs() > n_vars as isize) {
+        panic!("variable index is higher than n_vars");
     }
 }
 

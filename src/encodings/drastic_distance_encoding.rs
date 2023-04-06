@@ -50,7 +50,7 @@ impl<'a> DrasticDistanceEncoding<'a> {
 
     fn encode_ranks_cascades(&self, objective_index: usize, cnf_formula: &mut CNFFormula) {
         (1..self.objectives_weights[objective_index].len()).for_each(|j| {
-            cnf_formula.add_clause(vec![
+            cnf_formula.add_clause_unchecked(vec![
                 -self.rank_lit(objective_index, j),
                 self.rank_lit(objective_index, j - 1),
             ]);
@@ -61,7 +61,7 @@ impl<'a> DrasticDistanceEncoding<'a> {
         self.objectives[objective_index]
             .iter()
             .for_each(|weighted_var| {
-                cnf_formula.add_clause(vec![
+                cnf_formula.add_clause_unchecked(vec![
                     -(*weighted_var.thing() as isize),
                     self.rank_lit(
                         objective_index,
@@ -146,7 +146,7 @@ fn encode_rank_value(
             .map(|l| -l)
             .chain(std::iter::once(lit))
             .collect();
-        cnf.add_clause(clause);
+        cnf.add_clause_unchecked(clause);
         bit_mask <<= 1;
     });
 }
@@ -211,6 +211,24 @@ mod tests {
 "#;
         assert_eq!(
             expected,
+            String::from_utf8(writer.into_inner().unwrap()).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_no_objectives() {
+        let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
+        let prevalent = CNFFormula::from_dimacs(dimacs.as_bytes()).unwrap();
+        let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &[]);
+        let drastic_distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, vec![]);
+        let mut writer = BufWriter::new(Vec::new());
+        assert_eq!(2, drastic_distance_encoding.n_vars());
+        drastic_distance_encoding
+            .to_cnf_formula()
+            .to_dimacs(&mut writer)
+            .unwrap();
+        assert_eq!(
+            dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
         )
     }
