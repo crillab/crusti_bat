@@ -8,4 +8,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.70"
+rustc-hash = "1.1.0"
 varisat-dimacs = "0.2.2"

@@ -5,5 +5,8 @@ pub use cnf::Literal;
 pub use cnf::ToCNFFormula;
 pub use cnf::Variable;
 
+mod problems;
+pub use problems::MergingProblem;
+
 mod weighted;
 pub use weighted::Weighted;
