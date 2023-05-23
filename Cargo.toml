@@ -6,7 +6,17 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "crusti_bat"
+path = "src/lib.rs"
+
+[[bin]]
+name = "crusti_bat"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.70"
+crusti_app_helper = {path = "local_crates/crusti_app_helper-v0.1"}
 rustc-hash = "1.1.0"
+tempfile = "3.5.0"
 varisat-dimacs = "0.2.2"
