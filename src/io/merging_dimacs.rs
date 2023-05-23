@@ -1,4 +1,4 @@
-use crate::{CNFFormula, Clause, MergingProblem, Variable, Weighted};
+use crate::{core::VarWeights, CNFFormula, Clause, MergingProblem, Weighted};
 use anyhow::{anyhow, Context, Result};
 use rustc_hash::FxHashMap;
 use std::{
@@ -23,7 +23,7 @@ impl MergingDimacsReader {
         let line_index = Rc::new(RefCell::new(0));
         let line_index_context = || format!("while parsing line at index {}", line_index.borrow());
         let mut preamble_data = None;
-        let mut var_weights = FxHashMap::default();
+        let mut var_weights_map = FxHashMap::default();
         let mut integrity_clauses = Vec::new();
         let mut belief_bases_weights = Vec::new();
         let mut belief_bases_constraints = Vec::new();
@@ -42,7 +42,7 @@ impl MergingDimacsReader {
                         .context(context)?,
                     "w" => {
                         assert_preamble_is_present(&preamble_data)?;
-                        read_var_weight(&mut words, preamble_data.unwrap().0, &mut var_weights)
+                        read_var_weight(&mut words, preamble_data.unwrap().0, &mut var_weights_map)
                             .context("while reading a variable weight")
                             .with_context(line_index_context)
                             .context(context)?
@@ -88,14 +88,13 @@ impl MergingDimacsReader {
         if belief_bases_weights.len() != n_belief_bases {
             return Err(anyhow!("less belief base definitions than expected")).context(context);
         }
-        let mut var_weights_vec: Vec<Weighted<Variable>> = var_weights
+        let mut var_weights = VarWeights::new(n_vars);
+        var_weights_map
             .into_iter()
-            .map(|e| Weighted::new(e.0, e.1))
-            .collect();
-        var_weights_vec.sort_unstable_by_key(|w| *w.thing());
+            .for_each(|(v, w)| var_weights.add(Weighted::new(v, w)));
         Ok(MergingProblem::new(
             n_vars,
-            var_weights_vec,
+            var_weights,
             CNFFormula::new_from_clauses_unchecked(n_vars, integrity_clauses),
             belief_bases_constraints
                 .into_iter()
@@ -188,7 +187,7 @@ fn expect_literal_or_zero(words: &mut SplitWhitespace, n_vars: usize) -> Result<
     match words.next() {
         Some(word) => match str::parse::<isize>(word) {
             Ok(n) => {
-                if n.abs() as usize <= n_vars {
+                if n.unsigned_abs() <= n_vars {
                     Ok(n)
                 } else {
                     Err(anyhow!(
@@ -206,7 +205,7 @@ fn expect_literal_or_zero(words: &mut SplitWhitespace, n_vars: usize) -> Result<
 fn read_clause(words: &mut SplitWhitespace, first_lit: isize, n_vars: usize) -> Result<Clause> {
     let mut clause = Vec::new();
     match first_lit {
-        n if n.abs() as usize > n_vars => {
+        n if n.unsigned_abs() > n_vars => {
             return Err(anyhow!(
                 r#"literal {} has a variable index higher than the number of variables"#,
                 first_lit
@@ -235,7 +234,7 @@ fn read_belief_base_weight(words: &mut SplitWhitespace) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CNFDimacsWriter;
+    use crate::{CNFDimacsWriter, Variable};
     use std::io::BufWriter;
 
     #[test]
@@ -465,12 +464,15 @@ s 2
         let problem = reader.read(content.as_bytes()).unwrap();
         assert_eq!(3, problem.n_vars());
         assert_eq!(
-            &[
+            vec![
                 Weighted::new(1, 0),
                 Weighted::new(2, 1),
                 Weighted::new(3, 2)
             ],
-            problem.var_weights()
+            problem
+                .var_weights()
+                .iter()
+                .collect::<Vec<Weighted<Variable>>>()
         );
         assert_cnf_eq(
             "p cnf 3 2\n-1 2 0\n-2 3 0\n",

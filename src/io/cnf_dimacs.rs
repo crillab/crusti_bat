@@ -39,10 +39,13 @@ impl CNFDimacsWriter {
             cnf_formula.n_clauses()
         )
         .context(context)?;
-        cnf_formula.iter_clauses().try_for_each(|cl| {
-            cl.iter().try_for_each(|l| write!(writer, "{} ", l))?;
-            writeln!(writer, "0")
-        })?;
+        cnf_formula
+            .iter_clauses()
+            .try_for_each(|cl| {
+                cl.iter().try_for_each(|l| write!(writer, "{} ", l))?;
+                writeln!(writer, "0")
+            })
+            .context(context)?;
         Ok(())
     }
 }

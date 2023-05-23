@@ -1,8 +1,9 @@
-use crate::{CNFFormula, Variable, Weighted};
+use super::VarWeights;
+use crate::{CNFFormula, Weighted};
 
 pub struct MergingProblem {
     n_vars: usize,
-    var_weights: Vec<Weighted<Variable>>,
+    var_weights: VarWeights,
     integrity_constraint: CNFFormula,
     belief_bases: Vec<Weighted<CNFFormula>>,
 }
@@ -10,7 +11,7 @@ pub struct MergingProblem {
 impl MergingProblem {
     pub fn new(
         n_vars: usize,
-        var_weights: Vec<Weighted<Variable>>,
+        var_weights: VarWeights,
         integrity_constraint: CNFFormula,
         belief_bases: Vec<Weighted<CNFFormula>>,
     ) -> Self {
@@ -26,7 +27,7 @@ impl MergingProblem {
         self.n_vars
     }
 
-    pub fn var_weights(&self) -> &[Weighted<Variable>] {
+    pub fn var_weights(&self) -> &VarWeights {
         &self.var_weights
     }
 
