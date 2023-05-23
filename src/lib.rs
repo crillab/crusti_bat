@@ -8,8 +8,12 @@ pub use crate::core::Variable;
 pub use crate::core::Weighted;
 
 mod encodings;
+pub use encodings::AggregatorEncoding;
 pub use encodings::DiscrepancyEncoding;
+pub use encodings::DistanceEncoding;
 pub use encodings::DrasticDistanceEncoding;
+pub use encodings::MaxSatEncoding;
+pub use encodings::SumAggregatorEncoding;
 
 mod io;
 pub use io::CNFDimacsReader;

@@ -4,7 +4,13 @@ pub use discrepancy_encoding::DiscrepancyEncoding;
 mod drastic_distance_encoding;
 pub use drastic_distance_encoding::DrasticDistanceEncoding;
 
-use crate::{ToCNFFormula, Variable};
+mod sum_aggregator_encoding;
+pub use sum_aggregator_encoding::SumAggregatorEncoding;
+
+mod weighted_parallel_counter;
+pub use weighted_parallel_counter::WeightedParallelCounter;
+
+use crate::{Clause, ToCNFFormula, Variable, Weighted};
 use std::ops::Range;
 
 pub trait DistanceEncoding: ToCNFFormula {
@@ -16,3 +22,12 @@ pub trait DistanceEncoding: ToCNFFormula {
     fn distance_vars(&self) -> &[Range<Variable>];
 }
 
+pub trait MaxSatEncoding: ToCNFFormula {
+    /// Returns the weighted soft clauses of the MaxSat problem.
+    fn soft_clauses(&self) -> Vec<Weighted<Clause>>;
+}
+
+pub trait AggregatorEncoding: ToCNFFormula {
+    /// Returns the encoding which distances are aggregated.
+    fn distance_encoding(&self) -> &dyn DistanceEncoding;
+}
