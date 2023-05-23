@@ -19,3 +19,4 @@ mod io;
 pub use io::CNFDimacsReader;
 pub use io::CNFDimacsWriter;
 pub use io::MergingDimacsReader;
+pub use io::WCNFDimacs2022Writer;
