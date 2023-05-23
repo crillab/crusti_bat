@@ -1,55 +1,54 @@
-use crate::{CNFFormula, ToCNFFormula, Variable, Weighted};
+use super::DistanceEncoding;
+use crate::{core::VarWeights, CNFFormula, DiscrepancyEncoding, ToCNFFormula, Variable};
 use std::ops::Range;
 
 pub struct DrasticDistanceEncoding<'a> {
-    inner_cnf: &'a dyn ToCNFFormula,
-    objectives: Vec<Vec<Weighted<Variable>>>,
-    objectives_weights: Vec<Vec<usize>>,
-    objectives_distance_vars: Vec<Range<usize>>,
-    objectives_rank_vars: Vec<Range<usize>>,
+    discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
+    var_weights: &'a VarWeights,
+    discrepancy_var_ranges: Vec<Range<Variable>>,
+    objectives_distance_vars: Vec<Range<Variable>>,
+    objectives_rank_vars: Vec<Range<Variable>>,
 }
 
 impl<'a> DrasticDistanceEncoding<'a> {
-    pub fn new(inner_cnf: &'a dyn ToCNFFormula, objectives: Vec<Vec<Weighted<Variable>>>) -> Self {
-        let weights = objectives
-            .iter()
-            .map(|o| {
-                let mut weights = o.iter().map(|w| w.weight()).collect::<Vec<usize>>();
-                weights.sort_unstable();
-                weights.dedup();
-                weights
-            })
-            .collect::<Vec<Vec<usize>>>();
-        let mut offset = 1;
-        let distance_vars = weights
-            .iter()
-            .map(|w| {
-                let n_distance_vars = f64::log2((1 + *w.last().unwrap()) as f64).ceil() as usize;
-                let range =
-                    offset + inner_cnf.n_vars()..offset + inner_cnf.n_vars() + n_distance_vars;
-                offset += range.len();
-                range
+    pub fn new(
+        discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
+        var_weights: &'a VarWeights,
+    ) -> Self {
+        let n_distance_vars =
+            f64::log2((1 + var_weights.max_weight().unwrap_or_default()) as f64).ceil() as usize;
+        let discrepancy_var_ranges = discrepancy_encoding
+            .discrepancy_var_ranges()
+            .collect::<Vec<Range<Variable>>>();
+        let distance_vars = (0..discrepancy_var_ranges.len())
+            .map(|i| {
+                1 + i * n_distance_vars + discrepancy_encoding.n_vars()
+                    ..1 + i * n_distance_vars + discrepancy_encoding.n_vars() + n_distance_vars
             })
             .collect::<Vec<Range<usize>>>();
-        let rank_vars = weights
-            .iter()
-            .map(|w| {
-                let range = offset + inner_cnf.n_vars()..offset + inner_cnf.n_vars() + w.len();
-                offset += range.len();
-                range
+        let all_weights = var_weights.weights_sorted_dedup();
+        let rank_vars = (0..discrepancy_var_ranges.len())
+            .map(|i| {
+                1 + discrepancy_var_ranges.len() * n_distance_vars
+                    + i * all_weights.len()
+                    + discrepancy_encoding.n_vars()
+                    ..1 + discrepancy_var_ranges.len() * n_distance_vars
+                        + i * all_weights.len()
+                        + discrepancy_encoding.n_vars()
+                        + all_weights.len()
             })
             .collect();
         DrasticDistanceEncoding {
-            inner_cnf,
-            objectives,
-            objectives_weights: weights,
+            discrepancy_encoding,
+            var_weights,
+            discrepancy_var_ranges,
             objectives_distance_vars: distance_vars,
             objectives_rank_vars: rank_vars,
         }
     }
 
     fn encode_ranks_cascades(&self, objective_index: usize, cnf_formula: &mut CNFFormula) {
-        (1..self.objectives_weights[objective_index].len()).for_each(|j| {
+        (1..self.var_weights.weights_sorted_dedup().len()).for_each(|j| {
             cnf_formula.add_clause_unchecked(vec![
                 -self.rank_lit(objective_index, j),
                 self.rank_lit(objective_index, j - 1),
@@ -58,16 +57,22 @@ impl<'a> DrasticDistanceEncoding<'a> {
     }
 
     fn encode_objective_lits_to_ranks(&self, objective_index: usize, cnf_formula: &mut CNFFormula) {
-        self.objectives[objective_index]
-            .iter()
-            .for_each(|weighted_var| {
+        self.discrepancy_var_ranges[objective_index]
+            .clone()
+            .enumerate()
+            .for_each(|(i, discrepancy_var)| {
                 cnf_formula.add_clause_unchecked(vec![
-                    -(*weighted_var.thing() as isize),
+                    -(discrepancy_var as isize),
                     self.rank_lit(
                         objective_index,
-                        self.objectives_weights[objective_index]
+                        self.var_weights
+                            .weights_sorted_dedup()
                             .iter()
-                            .position(|w| *w == weighted_var.weight())
+                            .position(|w| {
+                                *w == self.var_weights[i + 1]
+                                    .map(|w| w.weight())
+                                    .unwrap_or_default()
+                            })
                             .unwrap(),
                     ),
                 ]);
@@ -80,7 +85,7 @@ impl<'a> DrasticDistanceEncoding<'a> {
 
     fn encode_ranks_to_values(&self, objective_index: usize, cnf_formula: &mut CNFFormula) {
         let rank_vars = &self.objectives_rank_vars[objective_index];
-        let weights = &self.objectives_weights[objective_index];
+        let weights = &self.var_weights.weights_sorted_dedup();
         let distance_vars = &self.objectives_distance_vars[objective_index];
         (rank_vars.start..rank_vars.end - 1)
             .enumerate()
@@ -103,8 +108,8 @@ impl<'a> DrasticDistanceEncoding<'a> {
 
 impl ToCNFFormula for DrasticDistanceEncoding<'_> {
     fn to_cnf_formula(&self) -> CNFFormula {
-        let mut cnf_formula = self.inner_cnf.to_cnf_formula();
-        (0..self.objectives.len()).for_each(|objective_index| {
+        let mut cnf_formula = self.discrepancy_encoding.to_cnf_formula();
+        (0..self.objectives_rank_vars.len()).for_each(|objective_index| {
             cnf_formula.add_vars(self.n_vars() - cnf_formula.n_vars());
             self.encode_ranks_cascades(objective_index, &mut cnf_formula);
             self.encode_objective_lits_to_ranks(objective_index, &mut cnf_formula);
@@ -114,7 +119,7 @@ impl ToCNFFormula for DrasticDistanceEncoding<'_> {
     }
 
     fn n_vars(&self) -> usize {
-        self.inner_cnf.n_vars()
+        self.discrepancy_encoding.n_vars()
             + self
                 .objectives_distance_vars
                 .iter()
@@ -125,6 +130,12 @@ impl ToCNFFormula for DrasticDistanceEncoding<'_> {
                 .iter()
                 .map(|d| d.len())
                 .sum::<usize>()
+    }
+}
+
+impl DistanceEncoding for DrasticDistanceEncoding<'_> {
+    fn distance_vars(&self) -> &[Range<Variable>] {
+        &self.objectives_distance_vars
     }
 }
 
@@ -154,7 +165,7 @@ fn encode_rank_value(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CNFDimacsReader, CNFDimacsWriter, DiscrepancyEncoding};
+    use crate::{CNFDimacsReader, CNFDimacsWriter, DiscrepancyEncoding, Weighted};
     use std::io::BufWriter;
 
     #[test]
@@ -170,17 +181,13 @@ mod tests {
                 .read("p cnf 2 1\n2 0\n".as_bytes())
                 .unwrap(),
         ];
-        let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &dominated);
-        let objectives = discrepancy_encoding
-            .discrepancy_var_ranges()
-            .map(|r| {
-                r.enumerate()
-                    .map(|(i, v)| Weighted::new(v, 1 + i))
-                    .collect()
-            })
-            .collect();
+        let dominated_refs = dominated.iter().collect::<Vec<&CNFFormula>>();
+        let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &dominated_refs);
+        let mut var_weights = VarWeights::new(2);
+        var_weights.add(Weighted::new(1, 1));
+        var_weights.add(Weighted::new(2, 2));
         let drastic_distance_encoding =
-            DrasticDistanceEncoding::new(&discrepancy_encoding, objectives);
+            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(18, drastic_distance_encoding.n_vars());
         CNFDimacsWriter::default()
@@ -225,7 +232,9 @@ mod tests {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
         let prevalent = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
         let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &[]);
-        let drastic_distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, vec![]);
+        let var_weights = VarWeights::new(2);
+        let drastic_distance_encoding =
+            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(2, drastic_distance_encoding.n_vars());
         CNFDimacsWriter::default()
@@ -235,5 +244,40 @@ mod tests {
             dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
         )
+    }
+
+    #[test]
+    fn test_no_weights() {
+        let prevalent = CNFFormula::new_from_clauses(2, vec![]);
+        let dominated1 = CNFFormula::new_from_clauses(2, vec![vec![1]]);
+        let dominated2 = CNFFormula::new_from_clauses(2, vec![vec![2]]);
+        let dominated = vec![&dominated1, &dominated2];
+        let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &dominated);
+        let mut var_weights = VarWeights::new(2);
+        var_weights.add(Weighted::new(1, 1));
+        var_weights.add(Weighted::new(2, 1));
+        let drastic_distance_encoding =
+            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let distance_vars = drastic_distance_encoding.distance_vars().to_vec();
+        assert_eq!(2, distance_vars.len());
+        distance_vars.iter().for_each(|r| assert_eq!(1, r.len()));
+    }
+
+    #[test]
+    fn test_with_weights() {
+        let prevalent = CNFFormula::new_from_clauses(2, vec![]);
+        let dominated1 = CNFFormula::new_from_clauses(2, vec![vec![1]]);
+        let dominated2 = CNFFormula::new_from_clauses(2, vec![vec![2]]);
+        let dominated = vec![&dominated1, &dominated2];
+        let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &dominated);
+        let mut var_weights = VarWeights::new(2);
+        var_weights.add(Weighted::new(1, 1));
+        var_weights.add(Weighted::new(2, 2));
+        let drastic_distance_encoding =
+            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let distance_vars = drastic_distance_encoding.distance_vars().to_vec();
+        assert_eq!(2, distance_vars.len());
+        assert_eq!(2, distance_vars[0].len());
+        assert_eq!(2, distance_vars[1].len());
     }
 }

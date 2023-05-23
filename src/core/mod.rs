@@ -9,4 +9,5 @@ mod problems;
 pub use problems::MergingProblem;
 
 mod weighted;
+pub use weighted::VarWeights;
 pub use weighted::Weighted;

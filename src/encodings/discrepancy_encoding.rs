@@ -1,13 +1,18 @@
 use crate::{CNFFormula, ToCNFFormula, Variable};
 use std::ops::Range;
 
+/// Given a prevalent knowledge (integrity constraints, a new certain piece of information) and a set of beliefs,
+/// this structure allow the construction of a CNF formula that can be used to check if a conjunction of the prevalent knowledge and a subset of the beliefs is coherent.
+///
+/// The encoding proceeds by renaming the variables in each belief and to declare discrepancy variables, that must be set to true if the renamed variable in the belief cannot be set as equivalent to the original variable.
+/// With this encoding, minimizing the amount of discrepancy variables set to true increases the amount of coherent knowledge.
 pub struct DiscrepancyEncoding<'a> {
     prevalent: &'a CNFFormula,
     renamed_dominated: Vec<RenamedCNFFormula<'a>>,
 }
 
 impl<'a> DiscrepancyEncoding<'a> {
-    pub fn new(prevalent: &'a CNFFormula, dominated: &'a [CNFFormula]) -> Self {
+    pub fn new(prevalent: &'a CNFFormula, dominated: &'a [&CNFFormula]) -> Self {
         let renamed_dominated: Vec<RenamedCNFFormula<'a>> = dominated
             .iter()
             .enumerate()
@@ -98,7 +103,8 @@ mod tests {
                 .read("p cnf 2 1\n2 0\n".as_bytes())
                 .unwrap(),
         ];
-        let encoding = DiscrepancyEncoding::new(&prevalent, &dominated);
+        let dominated_refs = dominated.iter().collect::<Vec<&CNFFormula>>();
+        let encoding = DiscrepancyEncoding::new(&prevalent, &dominated_refs);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(10, encoding.n_vars());
         assert_eq!(
@@ -145,5 +151,21 @@ mod tests {
             dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
         )
+    }
+
+    #[test]
+    fn test_no_clauses() {
+        let prevalent = CNFFormula::new_from_clauses(2, vec![]);
+        let dominated1 = CNFFormula::new_from_clauses(2, vec![vec![1]]);
+        let dominated2 = CNFFormula::new_from_clauses(2, vec![vec![2]]);
+        let dominated = vec![&dominated1, &dominated2];
+        let encoding = DiscrepancyEncoding::new(&prevalent, &dominated);
+        let discrepancy_var_ranges = encoding
+            .discrepancy_var_ranges()
+            .collect::<Vec<Range<Variable>>>();
+        assert_eq!(2, discrepancy_var_ranges.len());
+        discrepancy_var_ranges.iter().for_each(|r| {
+            assert_eq!(2, r.len());
+        });
     }
 }
