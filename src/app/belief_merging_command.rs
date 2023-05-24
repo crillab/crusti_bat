@@ -7,7 +7,7 @@ use crusti_bat::{
 };
 use std::{
     fs::{self, File},
-    io::{BufRead, BufReader, BufWriter, Write},
+    io::{self, BufRead, BufReader, BufWriter, Write},
     path::PathBuf,
     process::{self, Output},
     str::SplitWhitespace,
@@ -17,6 +17,7 @@ use tempfile::Builder;
 const CMD_NAME: &str = "belief-merging";
 
 const ARG_INPUT: &str = "ARG_INPUT";
+const ARG_OUTPUT: &str = "ARG_OUTPUT";
 const ARG_DISTANCE: &str = "ARG_DISTANCE";
 const ARG_SOLVER: &str = "ARG_SOLVER";
 
@@ -40,6 +41,14 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                     .multiple(false)
                     .help("the input file that contains the formulas to merge")
                     .required(true),
+            )
+            .arg(
+                Arg::with_name(ARG_OUTPUT)
+                    .short("o")
+                    .long("output")
+                    .empty_values(false)
+                    .multiple(false)
+                    .help("outputs to a file instead of standard output"),
             )
             .arg(
                 Arg::with_name(ARG_DISTANCE)
@@ -91,7 +100,18 @@ impl<'a> Command<'a> for BeliefMergingCommand {
         .context("while solving a MaxSAT problem")?;
         let enforced_cnf = sum_aggregator_encoding.enforce_value(optimum);
         let cnf_writer = CNFDimacsWriter::default();
-        cnf_writer.write(&mut std::io::stdout(), &enforced_cnf)
+        let (str_out, unbuffered_out): (String, Box<dyn Write>) =
+            match arg_matches.value_of(ARG_OUTPUT) {
+                None => ("standard output".to_string(), Box::new(io::stdout())),
+                Some(path) => {
+                    let file = File::create(path).context("while creating the output file")?;
+                    let str_path = fs::canonicalize(&PathBuf::from(path))
+                        .with_context(|| format!(r#"while opening file "{}""#, path))?;
+                    (format!("{:?}", str_path), Box::new(file))
+                }
+            };
+        info!("writing enforced CNF to {}", str_out);
+        cnf_writer.write(&mut BufWriter::new(unbuffered_out), &enforced_cnf)
     }
 }
 
