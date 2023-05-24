@@ -4,6 +4,9 @@ pub use discrepancy_encoding::DiscrepancyEncoding;
 mod drastic_distance_encoding;
 pub use drastic_distance_encoding::DrasticDistanceEncoding;
 
+mod hamming_distance_encoding;
+pub use hamming_distance_encoding::HammingDistanceEncoding;
+
 mod sum_aggregator_encoding;
 pub use sum_aggregator_encoding::SumAggregatorEncoding;
 

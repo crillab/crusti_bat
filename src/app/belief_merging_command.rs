@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Context, Result};
-use crusti_app_helper::{info, App, AppSettings, Arg, ArgMatches, Command, SubCommand};
+use crusti_app_helper::{debug, info, App, AppSettings, Arg, ArgMatches, Command, SubCommand};
 use crusti_bat::{
-    CNFDimacsWriter, CNFFormula, Clause, DiscrepancyEncoding, DrasticDistanceEncoding,
-    MaxSatEncoding, MergingDimacsReader, SumAggregatorEncoding, ToCNFFormula, WCNFDimacs2022Writer,
-    Weighted,
+    CNFDimacsWriter, CNFFormula, Clause, DiscrepancyEncoding, DistanceEncoding,
+    DrasticDistanceEncoding, HammingDistanceEncoding, MaxSatEncoding, MergingDimacsReader,
+    SumAggregatorEncoding, ToCNFFormula, VarWeights, WCNFDimacs2022Writer, Weighted,
 };
 use std::{
     fs::{self, File},
@@ -17,6 +17,7 @@ use tempfile::Builder;
 const CMD_NAME: &str = "belief-merging";
 
 const ARG_INPUT: &str = "ARG_INPUT";
+const ARG_DISTANCE: &str = "ARG_DISTANCE";
 const ARG_SOLVER: &str = "ARG_SOLVER";
 
 #[derive(Default)]
@@ -38,6 +39,16 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                     .empty_values(false)
                     .multiple(false)
                     .help("the input file that contains the formulas to merge")
+                    .required(true),
+            )
+            .arg(
+                Arg::with_name(ARG_DISTANCE)
+                    .short("d")
+                    .long("distance")
+                    .empty_values(false)
+                    .multiple(false)
+                    .possible_values(&["drastic", "hamming"])
+                    .help("the metrics used for distances")
                     .required(true),
             )
             .arg(
@@ -66,10 +77,10 @@ impl<'a> Command<'a> for BeliefMergingCommand {
             .unzip();
         let discrepancy_encoding =
             DiscrepancyEncoding::new(input_data.integrity_constraint(), &belief_bases);
-        let drastic_distance_encoding =
-            DrasticDistanceEncoding::new(&discrepancy_encoding, input_data.var_weights());
+        let distance_encoding =
+            create_distance_encoding(arg_matches, &discrepancy_encoding, input_data.var_weights());
         let sum_aggregator_encoding =
-            SumAggregatorEncoding::new(&drastic_distance_encoding, &belief_bases_weights);
+            SumAggregatorEncoding::new(distance_encoding.as_ref(), &belief_bases_weights);
         let wcnf_hard = sum_aggregator_encoding.to_cnf_formula();
         let wcnf_soft = sum_aggregator_encoding.soft_clauses();
         let optimum = execute_maxsat(
@@ -81,6 +92,24 @@ impl<'a> Command<'a> for BeliefMergingCommand {
         let enforced_cnf = sum_aggregator_encoding.enforce_value(optimum);
         let cnf_writer = CNFDimacsWriter::default();
         cnf_writer.write(&mut std::io::stdout(), &enforced_cnf)
+    }
+}
+
+fn create_distance_encoding<'a>(
+    arg_matches: &ArgMatches<'_>,
+    discrepancy_encoding: &'a DiscrepancyEncoding,
+    var_weights: &'a VarWeights,
+) -> Box<dyn DistanceEncoding + 'a> {
+    match arg_matches.value_of(ARG_DISTANCE).unwrap() {
+        "drastic" => Box::new(DrasticDistanceEncoding::new(
+            discrepancy_encoding,
+            var_weights,
+        )),
+        "hamming" => Box::new(HammingDistanceEncoding::new(
+            discrepancy_encoding,
+            var_weights,
+        )),
+        _ => unreachable!(),
     }
 }
 
@@ -97,7 +126,7 @@ fn execute_maxsat(
         .context("while creating a temporary file")?
         .keep()
         .context("while cancelling the temporary file deletion")?;
-    info!("writing the MaxSAT problem into {:?}", wcnf_file_path);
+    debug!("writing the MaxSAT problem into {:?}", wcnf_file_path);
     let mut wcnf_file_writer = BufWriter::new(&mut wcnf_file);
     wcnf_writer
         .write(&mut wcnf_file_writer, wcnf_hard, wcnf_soft)

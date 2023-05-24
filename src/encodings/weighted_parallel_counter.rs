@@ -1,4 +1,4 @@
-use crate::{CNFFormula, DistanceEncoding, Variable};
+use crate::{CNFFormula, Variable};
 use std::ops::Range;
 
 pub struct WeightedParallelCounter;
@@ -56,11 +56,11 @@ impl BitShiftRange {
 
 impl WeightedParallelCounter {
     pub fn encode(
-        distance_encoding: &dyn DistanceEncoding,
-        distance_weights: &[usize],
+        sum_operands: &[Range<Variable>],
+        operand_weights: &[usize],
         cnf: &mut CNFFormula,
     ) -> Range<Variable> {
-        let mut bitshift_sum = input_as_bitshift_sum(distance_encoding, distance_weights);
+        let mut bitshift_sum = input_as_bitshift_sum(sum_operands, operand_weights);
         bitshift_sum.sort_unstable_by_key(|b| -(b.range_len() as isize));
         while bitshift_sum.len() > 1 {
             let first = bitshift_sum.pop().unwrap();
@@ -80,12 +80,12 @@ impl WeightedParallelCounter {
 }
 
 fn input_as_bitshift_sum(
-    distance_encoding: &dyn DistanceEncoding,
-    distance_weights: &[usize],
+    sum_operands: &[Range<Variable>],
+    operand_weights: &[usize],
 ) -> Vec<BitShiftRange> {
-    distance_weights
+    operand_weights
         .iter()
-        .zip(distance_encoding.distance_vars().iter())
+        .zip(sum_operands.iter())
         .flat_map(|(w, r)| {
             let mut weight = *w;
             let mut shift = 0;
@@ -190,7 +190,8 @@ fn sum_bits(
 mod tests {
     use super::*;
     use crate::{
-        core::VarWeights, DiscrepancyEncoding, DrasticDistanceEncoding, ToCNFFormula, Weighted,
+        core::VarWeights, DiscrepancyEncoding, DistanceEncoding, DrasticDistanceEncoding,
+        ToCNFFormula, Weighted,
     };
 
     #[test]
@@ -206,7 +207,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding, &[1, 1], &mut cnf);
+            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 1], &mut cnf);
         assert_eq!(2, counter_variables.len());
     }
 
@@ -223,7 +224,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding, &[1, 1], &mut cnf);
+            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 1], &mut cnf);
         assert_eq!(3, counter_variables.len());
     }
 
@@ -240,7 +241,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding, &[1, 2], &mut cnf);
+            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 2], &mut cnf);
         assert_eq!(3, counter_variables.len());
     }
 
@@ -257,7 +258,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding, &[1, 2], &mut cnf);
+            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 2], &mut cnf);
         assert_eq!(4, counter_variables.len());
     }
 }

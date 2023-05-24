@@ -17,7 +17,7 @@ impl<'a> SumAggregatorEncoding<'a> {
     pub fn enforce_value(self, mut value: usize) -> CNFFormula {
         let mut cnf = self.to_cnf_formula();
         let aggregation_value_vars = WeightedParallelCounter::encode(
-            self.distance_encoding,
+            self.distance_encoding.distance_vars(),
             self.distance_weights,
             &mut cnf,
         );

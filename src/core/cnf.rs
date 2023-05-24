@@ -4,7 +4,7 @@ pub type Literal = isize;
 
 pub type Clause = Vec<Literal>;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CNFFormula {
     n_vars: usize,
     clauses: Vec<Clause>,
