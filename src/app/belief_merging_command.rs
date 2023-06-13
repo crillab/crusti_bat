@@ -105,7 +105,7 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                 None => ("standard output".to_string(), Box::new(io::stdout())),
                 Some(path) => {
                     let file = File::create(path).context("while creating the output file")?;
-                    let str_path = fs::canonicalize(&PathBuf::from(path))
+                    let str_path = fs::canonicalize(PathBuf::from(path))
                         .with_context(|| format!(r#"while opening file "{}""#, path))?;
                     (format!("{:?}", str_path), Box::new(file))
                 }

@@ -207,7 +207,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 1], &mut cnf);
+            WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 1], &mut cnf);
         assert_eq!(2, counter_variables.len());
     }
 
@@ -224,7 +224,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 1], &mut cnf);
+            WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 1], &mut cnf);
         assert_eq!(3, counter_variables.len());
     }
 
@@ -241,7 +241,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 2], &mut cnf);
+            WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 2], &mut cnf);
         assert_eq!(3, counter_variables.len());
     }
 
@@ -258,7 +258,7 @@ mod tests {
         let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
-            WeightedParallelCounter::encode(&distance_encoding.distance_vars(), &[1, 2], &mut cnf);
+            WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 2], &mut cnf);
         assert_eq!(4, counter_variables.len());
     }
 }
