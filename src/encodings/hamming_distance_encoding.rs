@@ -67,16 +67,12 @@ mod tests {
 
     #[test]
     fn test_xor() {
-        let prevalent = CNFDimacsReader::default()
+        let prevalent = CNFDimacsReader
             .read("p cnf 2 2\n-1 -2 0\n1 2 0\n".as_bytes())
             .unwrap();
         let dominated = vec![
-            CNFDimacsReader::default()
-                .read("p cnf 2 1\n1 0\n".as_bytes())
-                .unwrap(),
-            CNFDimacsReader::default()
-                .read("p cnf 2 1\n2 0\n".as_bytes())
-                .unwrap(),
+            CNFDimacsReader.read("p cnf 2 1\n1 0\n".as_bytes()).unwrap(),
+            CNFDimacsReader.read("p cnf 2 1\n2 0\n".as_bytes()).unwrap(),
         ];
         let dominated_refs = dominated.iter().collect::<Vec<&CNFFormula>>();
         let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &dominated_refs);
@@ -86,7 +82,7 @@ mod tests {
         let distance_encoding = HammingDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(20, distance_encoding.n_vars());
-        CNFDimacsWriter::default()
+        CNFDimacsWriter
             .write(&mut writer, &distance_encoding.to_cnf_formula())
             .unwrap();
         let expected = r#"p cnf 20 20
@@ -120,13 +116,13 @@ mod tests {
     #[test]
     fn test_no_objectives() {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
-        let prevalent = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
+        let prevalent = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &[]);
         let var_weights = VarWeights::new(2);
         let distance_encoding = HammingDistanceEncoding::new(&discrepancy_encoding, &var_weights);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(2, distance_encoding.n_vars());
-        CNFDimacsWriter::default()
+        CNFDimacsWriter
             .write(&mut writer, &distance_encoding.to_cnf_formula())
             .unwrap();
         assert_eq!(

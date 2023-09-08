@@ -240,204 +240,202 @@ mod tests {
     #[test]
     fn test_empty_instance() {
         let content = "";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_unknown_first_word() {
         let content = "a cnf 0 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_error_cnf() {
         let content = "p dnf 0 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_error_n_vars() {
         let content = "p cnf a 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_error_n_belief_bases() {
         let content = "p cnf 0 a\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_len_is_1() {
         let content = "p\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_len_is_2() {
         let content = "p cnf\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_len_is_3() {
         let content = "p cnf 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_len_is_5() {
         let content = "p cnf 0 0 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_preamble_twice() {
         let content = "p cnf 0 0\np cnf 0 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_no_preamble() {
         let content = "w 1 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_not_a_var() {
         let content = "p cnf 1 0\nw a 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_var_index_too_high() {
         let content = "p cnf 1 0\nw 2 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_not_a_weight() {
         let content = "p cnf 1 0\nw 1 a\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_len_is_1() {
         let content = "p cnf 1 0\nw\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_len_is_2() {
         let content = "p cnf 1 0\nw 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_len_is_4() {
         let content = "p cnf 1 0\nw 1 1 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_weight_multiple_definition() {
         let content = "p cnf 1 0\nw 1 1\nw 1 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_integrity_clause_not_a_lit() {
         let content = "p cnf 1 0\na 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_integrity_clause_first_var_index_too_high() {
         let content = "p cnf 1 0\n2 1 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_integrity_clause_second_var_index_too_high() {
         let content = "p cnf 1 0\n1 2 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_integrity_clause_missing_zero() {
         let content = "p cnf 1 0\n1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_integrity_clause_content_after_0() {
         let content = "p cnf 1 0\n1 0 1 0\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_too_much_belief_base_weights() {
         let content = "p cnf 1 1\ns 1\ns 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_belief_base_weight_in_not_a_weight() {
         let content = "p cnf 1 1\ns a\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_belief_base_weight_len_is_1() {
         let content = "p cnf 1 1\ns\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_belief_base_weight_len_is_3() {
         let content = "p cnf 1 1\ns 1 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     #[test]
     fn test_belief_base_some_are_undef() {
         let content = "p cnf 1 1\n";
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         assert!(reader.read(content.as_bytes()).is_err());
     }
 
     fn assert_cnf_eq(expected: &str, actual: &CNFFormula) {
         let mut writer = BufWriter::new(Vec::new());
-        CNFDimacsWriter::default()
-            .write(&mut writer, actual)
-            .unwrap();
+        CNFDimacsWriter.write(&mut writer, actual).unwrap();
         assert_eq!(
             expected,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
@@ -460,7 +458,7 @@ s 2
 -1 -3 0
 1 3 0
 "#;
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         let problem = reader.read(content.as_bytes()).unwrap();
         assert_eq!(3, problem.n_vars());
         assert_eq!(

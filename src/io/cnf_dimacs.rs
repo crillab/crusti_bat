@@ -58,11 +58,11 @@ mod tests {
     #[test]
     fn test_read_dimacs() {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
-        let cnf = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
+        let cnf = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         assert_eq!(2, cnf.n_vars());
         assert_eq!(2, cnf.n_clauses());
         let mut writer = BufWriter::new(Vec::new());
-        CNFDimacsWriter::default().write(&mut writer, &cnf).unwrap();
+        CNFDimacsWriter.write(&mut writer, &cnf).unwrap();
         assert_eq!(
             dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
@@ -72,11 +72,11 @@ mod tests {
     #[test]
     fn test_read_dimacs_empty() {
         let dimacs = "p cnf 0 0\n";
-        let cnf = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
+        let cnf = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         assert_eq!(0, cnf.n_vars());
         assert_eq!(0, cnf.n_clauses());
         let mut writer = BufWriter::new(Vec::new());
-        CNFDimacsWriter::default().write(&mut writer, &cnf).unwrap();
+        CNFDimacsWriter.write(&mut writer, &cnf).unwrap();
         assert_eq!(
             dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
@@ -86,11 +86,11 @@ mod tests {
     #[test]
     fn test_read_dimacs_no_clauses() {
         let dimacs = "p cnf 2 0\n";
-        let cnf = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
+        let cnf = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         assert_eq!(2, cnf.n_vars());
         assert_eq!(0, cnf.n_clauses());
         let mut writer = BufWriter::new(Vec::new());
-        CNFDimacsWriter::default().write(&mut writer, &cnf).unwrap();
+        CNFDimacsWriter.write(&mut writer, &cnf).unwrap();
         assert_eq!(
             dimacs,
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
@@ -100,24 +100,24 @@ mod tests {
     #[test]
     fn test_read_dimacs_unknown_variable() {
         let dimacs = "p cnf 1 1\n1 2 0\n";
-        assert!(CNFDimacsReader::default().read(dimacs.as_bytes()).is_err());
+        assert!(CNFDimacsReader.read(dimacs.as_bytes()).is_err());
     }
 
     #[test]
     fn test_read_dimacs_not_enough_clauses() {
         let dimacs = "p cnf 1 2\n1 2 0\n";
-        assert!(CNFDimacsReader::default().read(dimacs.as_bytes()).is_err());
+        assert!(CNFDimacsReader.read(dimacs.as_bytes()).is_err());
     }
 
     #[test]
     fn test_read_dimacs_too_much_clauses() {
         let dimacs = "p cnf 1 1\n1 2 0\n1 2 0\n";
-        assert!(CNFDimacsReader::default().read(dimacs.as_bytes()).is_err());
+        assert!(CNFDimacsReader.read(dimacs.as_bytes()).is_err());
     }
 
     #[test]
     fn test_read_dimacs_not_a_lit() {
         let dimacs = "p cnf 1 1\na 2 0\n";
-        assert!(CNFDimacsReader::default().read(dimacs.as_bytes()).is_err());
+        assert!(CNFDimacsReader.read(dimacs.as_bytes()).is_err());
     }
 }

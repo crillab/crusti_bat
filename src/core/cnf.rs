@@ -100,17 +100,13 @@ mod tests {
 
     #[test]
     fn test_merge_into() {
-        let mut cnf0 = CNFDimacsReader::default()
+        let mut cnf0 = CNFDimacsReader
             .read("p cnf 2 1\n-1 -2 0".as_bytes())
             .unwrap();
-        let cnf1 = CNFDimacsReader::default()
-            .read("p cnf 2 1\n1 2 0".as_bytes())
-            .unwrap();
+        let cnf1 = CNFDimacsReader.read("p cnf 2 1\n1 2 0".as_bytes()).unwrap();
         cnf1.merge_into(&mut cnf0);
         let mut writer = BufWriter::new(Vec::new());
-        CNFDimacsWriter::default()
-            .write(&mut writer, &cnf0)
-            .unwrap();
+        CNFDimacsWriter.write(&mut writer, &cnf0).unwrap();
         assert_eq!(
             "p cnf 2 2\n-1 -2 0\n1 2 0\n",
             String::from_utf8(writer.into_inner().unwrap()).unwrap()
@@ -120,10 +116,10 @@ mod tests {
     #[test]
     fn test_add_offset() {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
-        let mut cnf = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
+        let mut cnf = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         cnf.add_offset(3);
         let mut writer = BufWriter::new(Vec::new());
-        CNFDimacsWriter::default().write(&mut writer, &cnf).unwrap();
+        CNFDimacsWriter.write(&mut writer, &cnf).unwrap();
         assert_eq!(
             "p cnf 5 2\n-4 -5 0\n4 5 0\n",
             String::from_utf8(writer.into_inner().unwrap()).unwrap()

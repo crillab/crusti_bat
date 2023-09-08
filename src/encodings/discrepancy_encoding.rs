@@ -92,16 +92,12 @@ mod tests {
 
     #[test]
     fn test_xor() {
-        let prevalent = CNFDimacsReader::default()
+        let prevalent = CNFDimacsReader
             .read("p cnf 2 2\n-1 -2 0\n1 2 0\n".as_bytes())
             .unwrap();
         let dominated = vec![
-            CNFDimacsReader::default()
-                .read("p cnf 2 1\n1 0\n".as_bytes())
-                .unwrap(),
-            CNFDimacsReader::default()
-                .read("p cnf 2 1\n2 0\n".as_bytes())
-                .unwrap(),
+            CNFDimacsReader.read("p cnf 2 1\n1 0\n".as_bytes()).unwrap(),
+            CNFDimacsReader.read("p cnf 2 1\n2 0\n".as_bytes()).unwrap(),
         ];
         let dominated_refs = dominated.iter().collect::<Vec<&CNFFormula>>();
         let encoding = DiscrepancyEncoding::new(&prevalent, &dominated_refs);
@@ -113,7 +109,7 @@ mod tests {
                 .discrepancy_var_ranges()
                 .collect::<Vec<Range<usize>>>()
         );
-        CNFDimacsWriter::default()
+        CNFDimacsWriter
             .write(&mut writer, &encoding.to_cnf_formula())
             .unwrap();
         let expected = r#"p cnf 10 12
@@ -139,12 +135,12 @@ mod tests {
     #[test]
     fn test_no_profile() {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
-        let prevalent = CNFDimacsReader::default().read(dimacs.as_bytes()).unwrap();
+        let prevalent = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         let encoding = DiscrepancyEncoding::new(&prevalent, &[]);
         assert_eq!(2, encoding.n_vars());
         assert_eq!(0, encoding.discrepancy_var_ranges().count());
         let mut writer = BufWriter::new(Vec::new());
-        CNFDimacsWriter::default()
+        CNFDimacsWriter
             .write(&mut writer, &encoding.to_cnf_formula())
             .unwrap();
         assert_eq!(

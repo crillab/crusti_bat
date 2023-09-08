@@ -72,7 +72,7 @@ impl<'a> Command<'a> for BeliefMergingCommand {
     }
 
     fn execute(&self, arg_matches: &ArgMatches<'_>) -> Result<()> {
-        let reader = MergingDimacsReader::default();
+        let reader = MergingDimacsReader;
         let file_path = arg_matches.value_of(ARG_INPUT).unwrap();
         let input_file_canonicalized = fs::canonicalize(PathBuf::from(file_path))
             .with_context(|| format!(r#"while opening file "{}""#, file_path))?;
@@ -99,7 +99,7 @@ impl<'a> Command<'a> for BeliefMergingCommand {
         )
         .context("while solving a MaxSAT problem")?;
         let enforced_cnf = sum_aggregator_encoding.enforce_value(optimum);
-        let cnf_writer = CNFDimacsWriter::default();
+        let cnf_writer = CNFDimacsWriter;
         let (str_out, unbuffered_out): (String, Box<dyn Write>) =
             match arg_matches.value_of(ARG_OUTPUT) {
                 None => ("standard output".to_string(), Box::new(io::stdout())),
@@ -138,7 +138,7 @@ fn execute_maxsat(
     wcnf_hard: &CNFFormula,
     wcnf_soft: &[Weighted<Clause>],
 ) -> Result<usize> {
-    let wcnf_writer = WCNFDimacs2022Writer::default();
+    let wcnf_writer = WCNFDimacs2022Writer;
     let (mut wcnf_file, wcnf_file_path) = Builder::new()
         .prefix("crusti_bat-")
         .suffix(".wcnf")
