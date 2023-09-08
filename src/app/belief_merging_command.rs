@@ -69,6 +69,7 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                     .help("the path to the MaxSAT solver")
                     .required(true),
             )
+            .arg(crusti_app_helper::logging_level_cli_arg())
     }
 
     fn execute(&self, arg_matches: &ArgMatches<'_>) -> Result<()> {
@@ -168,17 +169,19 @@ fn execute_maxsat(
 }
 
 fn extract_maxsat_output(out: &Output) -> Result<usize> {
-    let context = "while inspecting the output of the MaxSAT solver";
     if !out.status.success() {
-        return Err(anyhow!("MaxSAT solver ended with an error status")).context(context);
+        return Err(anyhow!("MaxSAT solver ended with an error status"))
+            .context("while inspecting the output of the MaxSAT solver");
     }
-    let mut out_reader = BufReader::new(out.stdout.as_slice());
+    let out_reader = BufReader::new(out.stdout.as_slice());
+    extract_maxsat_output_content(out_reader)
+}
+
+fn extract_maxsat_output_content(mut out_reader: BufReader<&[u8]>) -> Result<usize> {
+    let context = "while inspecting the output of the MaxSAT solver";
     let mut s_line = None;
     let mut o_line = None;
     let update_line = |l: &mut Option<String>, words: SplitWhitespace| {
-        if l.is_some() {
-            return Err(anyhow!(r#"multiple "s" lines in output"#)).context(context);
-        }
         *l = Some(words.into_iter().fold(String::new(), |mut acc, x| {
             if !acc.is_empty() {
                 acc.push(' ');
@@ -186,7 +189,6 @@ fn extract_maxsat_output(out: &Output) -> Result<usize> {
             acc.push_str(x);
             acc
         }));
-        Ok(())
     };
     let mut buffer = String::new();
     loop {
@@ -195,12 +197,19 @@ fn extract_maxsat_output(out: &Output) -> Result<usize> {
             Ok(0) => break,
             Err(e) => return Err(e).context(context),
             Ok(_) => {
+                debug!("MAXSAT_SOLVER_OUTPUT: {}", buffer);
                 let mut words = buffer.split_whitespace();
                 match words.next() {
                     Some(w) => match w {
                         "c" | "v" => continue,
-                        "s" => update_line(&mut s_line, words).context(context)?,
-                        "o" => update_line(&mut o_line, words).context(context)?,
+                        "s" => {
+                            if s_line.is_some() {
+                                return Err(anyhow!(r#"multiple "s" lines in output"#))
+                                    .context(context);
+                            }
+                            update_line(&mut s_line, words)
+                        }
+                        "o" => update_line(&mut o_line, words),
                         _ => {
                             return Err(anyhow!(r#"unexpected line: "{}""#, buffer))
                                 .context(context)
@@ -222,4 +231,24 @@ fn extract_maxsat_output(out: &Output) -> Result<usize> {
     str::parse::<usize>(&o)
         .context("while reading the final objective value")
         .context(context)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_maxsat_output_multiple_o_lines() {
+        let output = "o 3\no 2\ns OPTIMUM FOUND\n";
+        assert_eq!(
+            2,
+            extract_maxsat_output_content(BufReader::new(output.as_bytes())).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_maxsat_output_multiple_s_lines() {
+        let output = "o 3\no 2\ns OPTIMUM FOUND\ns OPTIMUM FOUND\n";
+        assert!(extract_maxsat_output_content(BufReader::new(output.as_bytes())).is_err())
+    }
 }
