@@ -74,9 +74,7 @@ impl<'a> Command<'a> for BeliefMergingCommand {
 
     fn execute(&self, arg_matches: &ArgMatches<'_>) -> Result<()> {
         let reader = MergingDimacsReader;
-        let file_path = arg_matches.value_of(ARG_INPUT).unwrap();
-        let input_file_canonicalized = fs::canonicalize(PathBuf::from(file_path))
-            .with_context(|| format!(r#"while opening file "{}""#, file_path))?;
+        let input_file_canonicalized = realpath_from_arg(arg_matches, ARG_INPUT)?;
         info!("reading input file {:?}", input_file_canonicalized);
         let file_reader = BufReader::new(File::open(input_file_canonicalized)?);
         let input_data = reader.read(file_reader)?;
@@ -93,12 +91,9 @@ impl<'a> Command<'a> for BeliefMergingCommand {
             SumAggregatorEncoding::new(distance_encoding.as_ref(), &belief_bases_weights);
         let wcnf_hard = sum_aggregator_encoding.to_cnf_formula();
         let wcnf_soft = sum_aggregator_encoding.soft_clauses();
-        let optimum = execute_maxsat(
-            arg_matches.value_of(ARG_SOLVER).unwrap(),
-            &wcnf_hard,
-            &wcnf_soft,
-        )
-        .context("while solving a MaxSAT problem")?;
+        let maxsat_solver_canonicalized = realpath_from_arg(arg_matches, ARG_SOLVER)?;
+        let optimum = execute_maxsat(maxsat_solver_canonicalized, &wcnf_hard, &wcnf_soft)
+            .context("while solving a MaxSAT problem")?;
         let enforced_cnf = sum_aggregator_encoding.enforce_value(optimum);
         let cnf_writer = CNFDimacsWriter;
         let (str_out, unbuffered_out): (String, Box<dyn Write>) =
@@ -114,6 +109,12 @@ impl<'a> Command<'a> for BeliefMergingCommand {
         info!("writing enforced CNF to {}", str_out);
         cnf_writer.write(&mut BufWriter::new(unbuffered_out), &enforced_cnf)
     }
+}
+
+fn realpath_from_arg(arg_matches: &ArgMatches<'_>, arg: &str) -> Result<PathBuf> {
+    let file_path = arg_matches.value_of(arg).unwrap();
+    fs::canonicalize(PathBuf::from(file_path))
+        .with_context(|| format!(r#"while opening file "{}""#, file_path))
 }
 
 fn create_distance_encoding<'a>(
@@ -135,7 +136,7 @@ fn create_distance_encoding<'a>(
 }
 
 fn execute_maxsat(
-    solver_path: &str,
+    solver_path: PathBuf,
     wcnf_hard: &CNFFormula,
     wcnf_soft: &[Weighted<Clause>],
 ) -> Result<usize> {
