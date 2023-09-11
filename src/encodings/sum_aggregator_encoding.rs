@@ -49,10 +49,14 @@ impl MaxSatEncoding for SumAggregatorEncoding<'_> {
         self.distance_encoding
             .distance_vars()
             .iter()
-            .flat_map(|r| {
-                r.clone()
-                    .enumerate()
-                    .map(|(i, v)| Weighted::new(vec![-(v as isize)], 1 << i))
+            .enumerate()
+            .flat_map(|(distance_index, r)| {
+                r.clone().enumerate().map(move |(lit_index, v)| {
+                    Weighted::new(
+                        vec![-(v as isize)],
+                        (1 << lit_index) * self.distance_weights[distance_index],
+                    )
+                })
             })
             .collect()
     }
