@@ -1,5 +1,6 @@
 use super::{DistanceEncoding, MaxSatEncoding};
 use crate::{encodings::WeightedParallelCounter, CNFFormula, Clause, ToCNFFormula, Weighted};
+use std::ops::Range;
 
 pub struct SumAggregatorEncoding<'a> {
     distance_encoding: &'a dyn DistanceEncoding,
@@ -14,22 +15,22 @@ impl<'a> SumAggregatorEncoding<'a> {
         }
     }
 
-    pub fn enforce_value(self, mut value: usize) -> CNFFormula {
+    pub fn enforce_value(self, mut value: usize) -> (CNFFormula, Range<usize>) {
         let mut cnf = self.to_cnf_formula();
         let aggregation_value_vars = WeightedParallelCounter::encode(
             self.distance_encoding.distance_vars(),
             self.distance_weights,
             &mut cnf,
         );
-        aggregation_value_vars.into_iter().for_each(|v| {
-            if value & 1 == 0 {
+        aggregation_value_vars.clone().into_iter().for_each(|v| {
+            if value & 1 == 1 {
                 cnf.add_clause(vec![v as isize]);
             } else {
                 cnf.add_clause(vec![-(v as isize)]);
             }
             value >>= 1;
         });
-        cnf
+        (cnf, aggregation_value_vars)
     }
 }
 

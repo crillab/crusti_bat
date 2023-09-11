@@ -85,8 +85,25 @@ impl<'a> Command<'a> for BeliefMergingCommand {
             .unzip();
         let discrepancy_encoding =
             DiscrepancyEncoding::new(input_data.integrity_constraint(), &belief_bases);
+        debug!(
+            "discrepancy encoding with vars {}",
+            format_var_ranges(
+                discrepancy_encoding
+                    .discrepancy_var_ranges()
+                    .map(|r| (r.start, r.end - 1))
+            )
+        );
         let distance_encoding =
             create_distance_encoding(arg_matches, &discrepancy_encoding, input_data.var_weights());
+        debug!(
+            "distance encoding with vars {}",
+            format_var_ranges(
+                distance_encoding
+                    .distance_vars()
+                    .iter()
+                    .map(|r| (r.start, r.end - 1))
+            )
+        );
         let sum_aggregator_encoding =
             SumAggregatorEncoding::new(distance_encoding.as_ref(), &belief_bases_weights);
         let wcnf_hard = sum_aggregator_encoding.to_cnf_formula();
@@ -94,7 +111,14 @@ impl<'a> Command<'a> for BeliefMergingCommand {
         let maxsat_solver_canonicalized = realpath_from_arg(arg_matches, ARG_SOLVER)?;
         let optimum = execute_maxsat(maxsat_solver_canonicalized, &wcnf_hard, &wcnf_soft)
             .context("while solving a MaxSAT problem")?;
-        let enforced_cnf = sum_aggregator_encoding.enforce_value(optimum);
+        let (enforced_cnf, enforcement_vars) = sum_aggregator_encoding.enforce_value(optimum);
+        debug!(
+            "aggregation value enforced with vars {}",
+            format_var_ranges(std::iter::once((
+                enforcement_vars.start,
+                enforcement_vars.end - 1
+            )))
+        );
         let cnf_writer = CNFDimacsWriter;
         let (str_out, unbuffered_out): (String, Box<dyn Write>) =
             match arg_matches.value_of(ARG_OUTPUT) {
@@ -109,6 +133,16 @@ impl<'a> Command<'a> for BeliefMergingCommand {
         info!("writing enforced CNF to {}", str_out);
         cnf_writer.write(&mut BufWriter::new(unbuffered_out), &enforced_cnf)
     }
+}
+
+fn format_var_ranges(it: impl Iterator<Item = (usize, usize)>) -> String {
+    it.fold(String::new(), |mut acc, x| {
+        if !acc.is_empty() {
+            acc.push_str(", ")
+        }
+        acc.push_str(&format!("[{}..={}]", x.0, x.1));
+        acc
+    })
 }
 
 fn realpath_from_arg(arg_matches: &ArgMatches<'_>, arg: &str) -> Result<PathBuf> {
@@ -198,7 +232,7 @@ fn extract_maxsat_output_content(mut out_reader: BufReader<&[u8]>) -> Result<usi
             Ok(0) => break,
             Err(e) => return Err(e).context(context),
             Ok(_) => {
-                debug!("MAXSAT_SOLVER_OUTPUT: {}", buffer);
+                debug!("MAXSAT_SOLVER_OUTPUT: {}", buffer.trim());
                 let mut words = buffer.split_whitespace();
                 match words.next() {
                     Some(w) => match w {
