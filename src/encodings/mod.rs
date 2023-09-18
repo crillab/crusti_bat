@@ -13,7 +13,8 @@ pub use sum_aggregator_encoding::SumAggregatorEncoding;
 mod weighted_parallel_counter;
 pub use weighted_parallel_counter::WeightedParallelCounter;
 
-use crate::{Clause, ToCNFFormula, Variable, Weighted};
+use crate::{CNFFormula, ToCNFFormula, Variable};
+use anyhow::Result;
 use std::ops::Range;
 
 pub trait DistanceEncoding: ToCNFFormula {
@@ -25,12 +26,13 @@ pub trait DistanceEncoding: ToCNFFormula {
     fn distance_vars(&self) -> &[Range<Variable>];
 }
 
-pub trait MaxSatEncoding: ToCNFFormula {
-    /// Returns the weighted soft clauses of the MaxSat problem.
-    fn soft_clauses(&self) -> Vec<Weighted<Clause>>;
-}
-
-pub trait AggregatorEncoding: ToCNFFormula {
+pub trait AggregatorEncoding<T>: ToCNFFormula {
     /// Returns the encoding which distances are aggregated.
     fn distance_encoding(&self) -> &dyn DistanceEncoding;
+
+    /// Computes the optimal value for the aggregation.
+    fn compute_optimum(&mut self) -> Result<T>;
+
+    /// Enforces the aggregation has the provided value.
+    fn enforce_value(&mut self, value: T) -> CNFFormula;
 }

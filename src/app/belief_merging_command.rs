@@ -1,18 +1,15 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use crusti_app_helper::{debug, info, App, AppSettings, Arg, ArgMatches, Command, SubCommand};
 use crusti_bat::{
-    CNFDimacsWriter, CNFFormula, Clause, DiscrepancyEncoding, DistanceEncoding,
-    DrasticDistanceEncoding, HammingDistanceEncoding, MaxSatEncoding, MergingDimacsReader,
-    SumAggregatorEncoding, ToCNFFormula, VarWeights, WCNFDimacs2022Writer, Weighted,
+    AggregatorEncoding, CNFDimacsWriter, DiscrepancyEncoding, DistanceEncoding,
+    DrasticDistanceEncoding, ExternalMaxSatSolver, HammingDistanceEncoding, MergingDimacsReader,
+    SumAggregatorEncoding, VarWeights,
 };
 use std::{
     fs::{self, File},
-    io::{self, BufRead, BufReader, BufWriter, Write},
+    io::{self, BufReader, BufWriter, Write},
     path::PathBuf,
-    process::{self, Output},
-    str::SplitWhitespace,
 };
-use tempfile::Builder;
 
 const CMD_NAME: &str = "belief-merging";
 
@@ -104,21 +101,19 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                     .map(|r| (r.start, r.end - 1))
             )
         );
-        let sum_aggregator_encoding =
-            SumAggregatorEncoding::new(distance_encoding.as_ref(), &belief_bases_weights);
-        let wcnf_hard = sum_aggregator_encoding.to_cnf_formula();
-        let wcnf_soft = sum_aggregator_encoding.soft_clauses();
-        let maxsat_solver_canonicalized = realpath_from_arg(arg_matches, ARG_SOLVER)?;
-        let optimum = execute_maxsat(maxsat_solver_canonicalized, &wcnf_hard, &wcnf_soft)
-            .context("while solving a MaxSAT problem")?;
-        let (enforced_cnf, enforcement_vars) = sum_aggregator_encoding.enforce_value(optimum);
-        debug!(
-            "aggregation value enforced with vars {}",
-            format_var_ranges(std::iter::once((
-                enforcement_vars.start,
-                enforcement_vars.end - 1
-            )))
+        let maxsat_solver = Box::new(ExternalMaxSatSolver::from(realpath_from_arg(
+            arg_matches,
+            ARG_SOLVER,
+        )?));
+        let mut sum_aggregator_encoding = SumAggregatorEncoding::new(
+            distance_encoding.as_ref(),
+            &belief_bases_weights,
+            maxsat_solver,
         );
+        let optimum = sum_aggregator_encoding
+            .compute_optimum()
+            .context("while computing the optimal value for the aggregation")?;
+        let enforced_cnf = sum_aggregator_encoding.enforce_value(optimum);
         let cnf_writer = CNFDimacsWriter;
         let (str_out, unbuffered_out): (String, Box<dyn Write>) =
             match arg_matches.value_of(ARG_OUTPUT) {
@@ -166,124 +161,5 @@ fn create_distance_encoding<'a>(
             var_weights,
         )),
         _ => unreachable!(),
-    }
-}
-
-fn execute_maxsat(
-    solver_path: PathBuf,
-    wcnf_hard: &CNFFormula,
-    wcnf_soft: &[Weighted<Clause>],
-) -> Result<usize> {
-    let wcnf_writer = WCNFDimacs2022Writer;
-    let (mut wcnf_file, wcnf_file_path) = Builder::new()
-        .prefix("crusti_bat-")
-        .suffix(".wcnf")
-        .tempfile()
-        .context("while creating a temporary file")?
-        .keep()
-        .context("while cancelling the temporary file deletion")?;
-    debug!("writing the MaxSAT problem into {:?}", wcnf_file_path);
-    let mut wcnf_file_writer = BufWriter::new(&mut wcnf_file);
-    wcnf_writer
-        .write(&mut wcnf_file_writer, wcnf_hard, wcnf_soft)
-        .context("while writing the MaxSAT problem")?;
-    wcnf_file_writer.flush().unwrap();
-    std::mem::drop(wcnf_file_writer);
-    std::mem::drop(wcnf_file);
-    let command_output = process::Command::new(solver_path)
-        .arg(format!("{}", wcnf_file_path.display()))
-        .output()
-        .context("while invoking the external MaxSAT solver")?;
-    let optimum = extract_maxsat_output(&command_output)?;
-    info!(
-        "MaxSAT solver exited successfully with an optimal value of {}",
-        optimum
-    );
-    fs::remove_file(wcnf_file_path).context("while deleting the temporary file")?;
-    Ok(optimum)
-}
-
-fn extract_maxsat_output(out: &Output) -> Result<usize> {
-    if !out.status.success() {
-        return Err(anyhow!("MaxSAT solver ended with an error status"))
-            .context("while inspecting the output of the MaxSAT solver");
-    }
-    let out_reader = BufReader::new(out.stdout.as_slice());
-    extract_maxsat_output_content(out_reader)
-}
-
-fn extract_maxsat_output_content(mut out_reader: BufReader<&[u8]>) -> Result<usize> {
-    let context = "while inspecting the output of the MaxSAT solver";
-    let mut s_line = None;
-    let mut o_line = None;
-    let update_line = |l: &mut Option<String>, words: SplitWhitespace| {
-        *l = Some(words.into_iter().fold(String::new(), |mut acc, x| {
-            if !acc.is_empty() {
-                acc.push(' ');
-            }
-            acc.push_str(x);
-            acc
-        }));
-    };
-    let mut buffer = String::new();
-    loop {
-        buffer.clear();
-        match out_reader.read_line(&mut buffer) {
-            Ok(0) => break,
-            Err(e) => return Err(e).context(context),
-            Ok(_) => {
-                debug!("MAXSAT_SOLVER_OUTPUT: {}", buffer.trim());
-                let mut words = buffer.split_whitespace();
-                match words.next() {
-                    Some(w) => match w {
-                        "c" | "v" => continue,
-                        "s" => {
-                            if s_line.is_some() {
-                                return Err(anyhow!(r#"multiple "s" lines in output"#))
-                                    .context(context);
-                            }
-                            update_line(&mut s_line, words)
-                        }
-                        "o" => update_line(&mut o_line, words),
-                        _ => {
-                            return Err(anyhow!(r#"unexpected line: "{}""#, buffer))
-                                .context(context)
-                        }
-                    },
-                    None => continue,
-                }
-            }
-        }
-    }
-    let s = s_line.ok_or(anyhow!(r#"missing "s" line"#).context(context))?;
-    if s != "OPTIMUM FOUND" {
-        return Err(anyhow!(
-            r#"wrong solver status; expected "OPTIMUM FOUND", got "{}""#,
-            s
-        ));
-    }
-    let o = o_line.ok_or(anyhow!(r#"missing "o" line"#).context(context))?;
-    str::parse::<usize>(&o)
-        .context("while reading the final objective value")
-        .context(context)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_maxsat_output_multiple_o_lines() {
-        let output = "o 3\no 2\ns OPTIMUM FOUND\n";
-        assert_eq!(
-            2,
-            extract_maxsat_output_content(BufReader::new(output.as_bytes())).unwrap()
-        )
-    }
-
-    #[test]
-    fn test_maxsat_output_multiple_s_lines() {
-        let output = "o 3\no 2\ns OPTIMUM FOUND\ns OPTIMUM FOUND\n";
-        assert!(extract_maxsat_output_content(BufReader::new(output.as_bytes())).is_err())
     }
 }

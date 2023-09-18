@@ -1,50 +1,29 @@
-use super::{DistanceEncoding, MaxSatEncoding};
-use crate::{encodings::WeightedParallelCounter, CNFFormula, Clause, ToCNFFormula, Weighted};
-use std::ops::Range;
+use super::DistanceEncoding;
+use crate::{
+    encodings::WeightedParallelCounter, AggregatorEncoding, CNFFormula, Clause, MaxSatSolver,
+    ToCNFFormula, Weighted,
+};
+use anyhow::{Context, Result};
 
 pub struct SumAggregatorEncoding<'a> {
+    maxsat_solver: Box<dyn MaxSatSolver>,
     distance_encoding: &'a dyn DistanceEncoding,
     distance_weights: &'a [usize],
 }
 
 impl<'a> SumAggregatorEncoding<'a> {
-    pub fn new(distance_encoding: &'a dyn DistanceEncoding, distance_weights: &'a [usize]) -> Self {
+    pub fn new(
+        distance_encoding: &'a dyn DistanceEncoding,
+        distance_weights: &'a [usize],
+        maxsat_solver: Box<dyn MaxSatSolver>,
+    ) -> Self {
         SumAggregatorEncoding {
+            maxsat_solver,
             distance_encoding,
             distance_weights,
         }
     }
 
-    pub fn enforce_value(self, mut value: usize) -> (CNFFormula, Range<usize>) {
-        let mut cnf = self.to_cnf_formula();
-        let aggregation_value_vars = WeightedParallelCounter::encode(
-            self.distance_encoding.distance_vars(),
-            self.distance_weights,
-            &mut cnf,
-        );
-        aggregation_value_vars.clone().into_iter().for_each(|v| {
-            if value & 1 == 1 {
-                cnf.add_clause(vec![v as isize]);
-            } else {
-                cnf.add_clause(vec![-(v as isize)]);
-            }
-            value >>= 1;
-        });
-        (cnf, aggregation_value_vars)
-    }
-}
-
-impl ToCNFFormula for SumAggregatorEncoding<'_> {
-    fn to_cnf_formula(&self) -> CNFFormula {
-        self.distance_encoding.to_cnf_formula()
-    }
-
-    fn n_vars(&self) -> usize {
-        self.distance_encoding.n_vars()
-    }
-}
-
-impl MaxSatEncoding for SumAggregatorEncoding<'_> {
     fn soft_clauses(&self) -> Vec<Weighted<Clause>> {
         self.distance_encoding
             .distance_vars()
@@ -59,5 +38,48 @@ impl MaxSatEncoding for SumAggregatorEncoding<'_> {
                 })
             })
             .collect()
+    }
+}
+
+impl ToCNFFormula for SumAggregatorEncoding<'_> {
+    fn to_cnf_formula(&self) -> CNFFormula {
+        self.distance_encoding.to_cnf_formula()
+    }
+
+    fn n_vars(&self) -> usize {
+        self.distance_encoding.n_vars()
+    }
+}
+
+impl AggregatorEncoding<usize> for SumAggregatorEncoding<'_> {
+    fn distance_encoding(&self) -> &dyn DistanceEncoding {
+        self.distance_encoding
+    }
+
+    fn compute_optimum(&mut self) -> Result<usize> {
+        let wcnf_hard = self.to_cnf_formula();
+        let wcnf_soft = self.soft_clauses();
+        self.maxsat_solver
+            .solve(&wcnf_hard, &wcnf_soft)
+            .context("while solving a MaxSAT problem")
+            .map(|r| r.0)
+    }
+
+    fn enforce_value(&mut self, mut value: usize) -> CNFFormula {
+        let mut cnf = self.to_cnf_formula();
+        let aggregation_value_vars = WeightedParallelCounter::encode(
+            self.distance_encoding.distance_vars(),
+            self.distance_weights,
+            &mut cnf,
+        );
+        aggregation_value_vars.clone().for_each(|v| {
+            if value & 1 == 1 {
+                cnf.add_clause(vec![v as isize]);
+            } else {
+                cnf.add_clause(vec![-(v as isize)]);
+            }
+            value >>= 1;
+        });
+        cnf
     }
 }
