@@ -1,11 +1,12 @@
 use anyhow::{Context, Result};
 use crusti_app_helper::{debug, info, App, AppSettings, Arg, ArgMatches, Command, SubCommand};
 use crusti_bat::{
-    AggregatorEncoding, CNFDimacsWriter, DiscrepancyEncoding, DistanceEncoding,
+    AggregatorEncoding, CNFDimacsWriter, CNFFormula, DiscrepancyEncoding, DistanceEncoding,
     DrasticDistanceEncoding, ExternalMaxSatSolver, HammingDistanceEncoding, LexiAggregatorEncoding,
     MergingDimacsReader, SumAggregatorEncoding, VarWeights,
 };
 use std::{
+    fmt::Display,
     fs::{self, File},
     io::{self, BufReader, BufWriter, Write},
     path::PathBuf,
@@ -112,49 +113,11 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                     .map(|r| (r.start, r.end - 1))
             )
         );
-        let maxsat_solver = Box::new(ExternalMaxSatSolver::from(realpath_from_arg(
+        let enforced_cnf = enforce_cnf(
             arg_matches,
-            ARG_SOLVER,
-        )?));
-        let enforced_cnf = match arg_matches.value_of(ARG_AGGREGATOR).unwrap() {
-            "sum" => {
-                let mut sum_aggregator_encoding = SumAggregatorEncoding::new(
-                    distance_encoding.as_ref(),
-                    &belief_bases_weights,
-                    maxsat_solver,
-                );
-                let optimum = sum_aggregator_encoding
-                    .compute_optimum()
-                    .context("while computing the optimal value for the aggregation")?;
-                info!("optimum is {}", optimum);
-                sum_aggregator_encoding.enforce_value(optimum)
-            }
-            "gmin" => {
-                let mut gmax_aggregator = LexiAggregatorEncoding::new_for_leximin(
-                    distance_encoding.as_ref(),
-                    &belief_bases_weights,
-                    maxsat_solver,
-                );
-                let optimum = gmax_aggregator
-                    .compute_optimum()
-                    .context("while computing the optimal value for the aggregation")?;
-                info!("optimum is {}", optimum);
-                gmax_aggregator.enforce_value(optimum)
-            }
-            "gmax" => {
-                let mut gmax_aggregator = LexiAggregatorEncoding::new_for_leximax(
-                    distance_encoding.as_ref(),
-                    &belief_bases_weights,
-                    maxsat_solver,
-                );
-                let optimum = gmax_aggregator
-                    .compute_optimum()
-                    .context("while computing the optimal value for the aggregation")?;
-                info!("optimum is {}", optimum);
-                gmax_aggregator.enforce_value(optimum)
-            }
-            _ => unreachable!(),
-        };
+            distance_encoding.as_ref(),
+            &belief_bases_weights,
+        )?;
         let cnf_writer = CNFDimacsWriter;
         let (str_out, unbuffered_out): (String, Box<dyn Write>) =
             match arg_matches.value_of(ARG_OUTPUT) {
@@ -169,6 +132,47 @@ impl<'a> Command<'a> for BeliefMergingCommand {
         info!("writing enforced CNF to {}", str_out);
         cnf_writer.write(&mut BufWriter::new(unbuffered_out), &enforced_cnf)
     }
+}
+
+fn enforce_cnf(
+    arg_matches: &ArgMatches<'_>,
+    distance_encoding: &dyn DistanceEncoding,
+    belief_bases_weights: &[usize],
+) -> Result<CNFFormula> {
+    let maxsat_solver = Box::new(ExternalMaxSatSolver::from(realpath_from_arg(
+        arg_matches,
+        ARG_SOLVER,
+    )?));
+    Ok(match arg_matches.value_of(ARG_AGGREGATOR).unwrap() {
+        "sum" => enforce_cnf_with_aggregator(SumAggregatorEncoding::new(
+            distance_encoding,
+            belief_bases_weights,
+            maxsat_solver,
+        ))?,
+        "gmin" => enforce_cnf_with_aggregator(LexiAggregatorEncoding::new_for_leximin(
+            distance_encoding,
+            belief_bases_weights,
+            maxsat_solver,
+        ))?,
+        "gmax" => enforce_cnf_with_aggregator(LexiAggregatorEncoding::new_for_leximax(
+            distance_encoding,
+            belief_bases_weights,
+            maxsat_solver,
+        ))?,
+        _ => unreachable!(),
+    })
+}
+
+fn enforce_cnf_with_aggregator<T, U>(mut aggregator_encoding: T) -> Result<CNFFormula>
+where
+    T: AggregatorEncoding<U>,
+    U: Display,
+{
+    let optimum = aggregator_encoding
+        .compute_optimum()
+        .context("while computing the optimal value for the aggregation")?;
+    info!("optimum is {}", optimum);
+    Ok(aggregator_encoding.enforce_value(optimum))
 }
 
 fn format_var_ranges(it: impl Iterator<Item = (usize, usize)>) -> String {
