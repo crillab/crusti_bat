@@ -8,7 +8,7 @@ mod hamming_distance_encoding;
 pub use hamming_distance_encoding::HammingDistanceEncoding;
 
 mod leximax_aggregator_encoding;
-pub use leximax_aggregator_encoding::LeximaxAggregatorEncoding;
+pub use leximax_aggregator_encoding::LexiAggregatorEncoding;
 
 mod sum_aggregator_encoding;
 pub use sum_aggregator_encoding::SumAggregatorEncoding;

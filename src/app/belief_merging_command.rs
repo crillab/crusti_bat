@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use crusti_app_helper::{debug, info, App, AppSettings, Arg, ArgMatches, Command, SubCommand};
 use crusti_bat::{
     AggregatorEncoding, CNFDimacsWriter, DiscrepancyEncoding, DistanceEncoding,
-    DrasticDistanceEncoding, ExternalMaxSatSolver, HammingDistanceEncoding,
-    LeximaxAggregatorEncoding, MergingDimacsReader, SumAggregatorEncoding, VarWeights,
+    DrasticDistanceEncoding, ExternalMaxSatSolver, HammingDistanceEncoding, LexiAggregatorEncoding,
+    MergingDimacsReader, SumAggregatorEncoding, VarWeights,
 };
 use std::{
     fs::{self, File},
@@ -64,7 +64,7 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                     .long("aggregator")
                     .empty_values(false)
                     .multiple(false)
-                    .possible_values(&["sum", "gmax"])
+                    .possible_values(&["sum", "gmin", "gmax"])
                     .help("the aggregator used for the distances")
                     .required(true),
             )
@@ -129,8 +129,20 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                 info!("optimum is {}", optimum);
                 sum_aggregator_encoding.enforce_value(optimum)
             }
+            "gmin" => {
+                let mut gmax_aggregator = LexiAggregatorEncoding::new_for_leximin(
+                    distance_encoding.as_ref(),
+                    &belief_bases_weights,
+                    maxsat_solver,
+                );
+                let optimum = gmax_aggregator
+                    .compute_optimum()
+                    .context("while computing the optimal value for the aggregation")?;
+                info!("optimum is {}", optimum);
+                gmax_aggregator.enforce_value(optimum)
+            }
             "gmax" => {
-                let mut gmax_aggregator = LeximaxAggregatorEncoding::new(
+                let mut gmax_aggregator = LexiAggregatorEncoding::new_for_leximax(
                     distance_encoding.as_ref(),
                     &belief_bases_weights,
                     maxsat_solver,

@@ -16,7 +16,7 @@ pub use encodings::DiscrepancyEncoding;
 pub use encodings::DistanceEncoding;
 pub use encodings::DrasticDistanceEncoding;
 pub use encodings::HammingDistanceEncoding;
-pub use encodings::LeximaxAggregatorEncoding;
+pub use encodings::LexiAggregatorEncoding;
 pub use encodings::SumAggregatorEncoding;
 
 mod io;
