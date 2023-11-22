@@ -4,11 +4,12 @@ use crate::{
 };
 use anyhow::Result;
 use pblib_rs::PB2CNF;
-use std::ops::Range;
+use std::{fmt::Display, ops::Range};
 
 pub struct LeximaxAggregatorEncoding<'a> {
     maxsat_solver: Box<dyn MaxSatSolver>,
     distance_encoding: &'a dyn DistanceEncoding,
+    distance_weights: &'a [usize],
     new_clauses: CNFFormula,
     bounds_vars: Vec<Range<usize>>,
 }
@@ -25,6 +26,7 @@ impl<'a> LeximaxAggregatorEncoding<'a> {
         LeximaxAggregatorEncoding {
             maxsat_solver,
             distance_encoding,
+            distance_weights,
             new_clauses,
             bounds_vars,
         }
@@ -43,10 +45,29 @@ impl ToCNFFormula for LeximaxAggregatorEncoding<'_> {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct LeximaxAggregation {
-    values: Vec<usize>,
+    values: Vec<(usize, usize)>,
     literals: Vec<Literal>,
+}
+
+impl Display for LeximaxAggregation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}]",
+            self.values
+                .iter()
+                .map(|(v, w)| format!("{} (weight={})", v, w))
+                .fold(String::new(), |mut acc, x| if acc.is_empty() {
+                    x
+                } else {
+                    acc.push_str(", ");
+                    acc.push_str(&x);
+                    acc
+                })
+        )
+    }
 }
 
 impl AggregatorEncoding<LeximaxAggregation> for LeximaxAggregatorEncoding<'_> {
@@ -64,7 +85,8 @@ impl AggregatorEncoding<LeximaxAggregation> for LeximaxAggregatorEncoding<'_> {
                 .map(|(i, v)| Weighted::new(vec![-(v as isize)], 1 << i))
                 .collect::<Vec<_>>();
             let (value, model) = self.maxsat_solver.solve(&cnf, &soft_clauses).unwrap();
-            result.values.push(value);
+            let dv_factor = distance_vars_factors(self.distance_weights);
+            result.values.push((value / dv_factor, value % dv_factor));
             b.clone().for_each(|v| {
                 cnf.add_clause_unchecked(vec![model[v - 1]]);
                 result.literals.push(model[v - 1])
@@ -88,19 +110,19 @@ fn encode_bounds(
     distance_encoding: &dyn DistanceEncoding,
     distance_weights: &[usize],
 ) -> Vec<Range<Variable>> {
-    let value_factor = 1 + distance_weights.iter().sum::<usize>();
+    let dv_factor = distance_vars_factors(distance_weights);
     let distance_vars = distance_encoding.distance_vars();
     let backdoor_factor = (1 + distance_vars
         .iter()
         .map(|r| (1 << (r.end - r.start + 1)) - 1)
         .sum::<usize>())
-        * value_factor;
+        * dv_factor;
     let max_bound_value = (1 + distance_vars
         .iter()
         .map(|r| (1 << (r.end - r.start + 1)) - 1)
         .max()
         .unwrap_or_default())
-        * value_factor;
+        * dv_factor;
     let bound_n_vars = f64::ceil(f64::log2(max_bound_value as f64)) as usize;
     (0..distance_vars.len())
         .map(|i| {
@@ -110,7 +132,7 @@ fn encode_bounds(
                 bound_n_vars,
                 distance_vars,
                 distance_weights,
-                value_factor,
+                dv_factor,
                 backdoor_factor,
             )
         })
@@ -162,4 +184,8 @@ fn encode_bound(
         cnf.add_clause_unchecked(clause.iter().map(|l| *l as isize).collect());
     });
     bound_vars
+}
+
+fn distance_vars_factors(distance_weights: &[usize]) -> usize {
+    1 + distance_weights.iter().sum::<usize>()
 }

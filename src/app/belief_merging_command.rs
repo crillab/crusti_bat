@@ -138,7 +138,7 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                 let optimum = gmax_aggregator
                     .compute_optimum()
                     .context("while computing the optimal value for the aggregation")?;
-                info!("optimum is {:?}", optimum);
+                info!("optimum is {}", optimum);
                 gmax_aggregator.enforce_value(optimum)
             }
             _ => unreachable!(),
