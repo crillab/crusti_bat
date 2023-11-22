@@ -7,6 +7,9 @@ pub use drastic_distance_encoding::DrasticDistanceEncoding;
 mod hamming_distance_encoding;
 pub use hamming_distance_encoding::HammingDistanceEncoding;
 
+mod leximax_aggregator_encoding;
+pub use leximax_aggregator_encoding::LeximaxAggregatorEncoding;
+
 mod sum_aggregator_encoding;
 pub use sum_aggregator_encoding::SumAggregatorEncoding;
 

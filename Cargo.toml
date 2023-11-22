@@ -18,5 +18,6 @@ path = "src/main.rs"
 anyhow = "1.0.70"
 crusti_app_helper = {path = "local_crates/crusti_app_helper-v0.1"}
 rustc-hash = "1.1.0"
-tempfile = "3.5.0"
+pblib-rs = { path="../pblib-rs" }
+tempfile = "3"
 varisat-dimacs = "0.2.2"

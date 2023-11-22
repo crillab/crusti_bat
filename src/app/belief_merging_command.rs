@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use crusti_app_helper::{debug, info, App, AppSettings, Arg, ArgMatches, Command, SubCommand};
 use crusti_bat::{
     AggregatorEncoding, CNFDimacsWriter, DiscrepancyEncoding, DistanceEncoding,
-    DrasticDistanceEncoding, ExternalMaxSatSolver, HammingDistanceEncoding, MergingDimacsReader,
-    SumAggregatorEncoding, VarWeights,
+    DrasticDistanceEncoding, ExternalMaxSatSolver, HammingDistanceEncoding,
+    LeximaxAggregatorEncoding, MergingDimacsReader, SumAggregatorEncoding, VarWeights,
 };
 use std::{
     fs::{self, File},
@@ -16,6 +16,7 @@ const CMD_NAME: &str = "belief-merging";
 const ARG_INPUT: &str = "ARG_INPUT";
 const ARG_OUTPUT: &str = "ARG_OUTPUT";
 const ARG_DISTANCE: &str = "ARG_DISTANCE";
+const ARG_AGGREGATOR: &str = "ARG_AGGREGATOR";
 const ARG_SOLVER: &str = "ARG_SOLVER";
 
 #[derive(Default)]
@@ -55,6 +56,16 @@ impl<'a> Command<'a> for BeliefMergingCommand {
                     .multiple(false)
                     .possible_values(&["drastic", "hamming"])
                     .help("the metrics used for distances")
+                    .required(true),
+            )
+            .arg(
+                Arg::with_name(ARG_AGGREGATOR)
+                    .short("a")
+                    .long("aggregator")
+                    .empty_values(false)
+                    .multiple(false)
+                    .possible_values(&["sum", "gmax"])
+                    .help("the aggregator used for the distances")
                     .required(true),
             )
             .arg(
@@ -105,15 +116,33 @@ impl<'a> Command<'a> for BeliefMergingCommand {
             arg_matches,
             ARG_SOLVER,
         )?));
-        let mut sum_aggregator_encoding = SumAggregatorEncoding::new(
-            distance_encoding.as_ref(),
-            &belief_bases_weights,
-            maxsat_solver,
-        );
-        let optimum = sum_aggregator_encoding
-            .compute_optimum()
-            .context("while computing the optimal value for the aggregation")?;
-        let enforced_cnf = sum_aggregator_encoding.enforce_value(optimum);
+        let enforced_cnf = match arg_matches.value_of(ARG_AGGREGATOR).unwrap() {
+            "sum" => {
+                let mut sum_aggregator_encoding = SumAggregatorEncoding::new(
+                    distance_encoding.as_ref(),
+                    &belief_bases_weights,
+                    maxsat_solver,
+                );
+                let optimum = sum_aggregator_encoding
+                    .compute_optimum()
+                    .context("while computing the optimal value for the aggregation")?;
+                info!("optimum is {}", optimum);
+                sum_aggregator_encoding.enforce_value(optimum)
+            }
+            "gmax" => {
+                let mut gmax_aggregator = LeximaxAggregatorEncoding::new(
+                    distance_encoding.as_ref(),
+                    &belief_bases_weights,
+                    maxsat_solver,
+                );
+                let optimum = gmax_aggregator
+                    .compute_optimum()
+                    .context("while computing the optimal value for the aggregation")?;
+                info!("optimum is {:?}", optimum);
+                gmax_aggregator.enforce_value(optimum)
+            }
+            _ => unreachable!(),
+        };
         let cnf_writer = CNFDimacsWriter;
         let (str_out, unbuffered_out): (String, Box<dyn Write>) =
             match arg_matches.value_of(ARG_OUTPUT) {
