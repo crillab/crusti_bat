@@ -11,6 +11,7 @@ pub use maxsat_solver::MaxSatSolver;
 
 mod problems;
 pub use problems::MergingProblem;
+pub use problems::RevisionProblem;
 
 mod weighted;
 pub use weighted::VarWeights;
