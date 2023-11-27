@@ -1,4 +1,5 @@
 use crate::{CNFFormula, ToCNFFormula, Variable};
+use itertools::Itertools;
 use std::ops::Range;
 
 /// Given a prevalent knowledge (integrity constraints, a new certain piece of information) and a set of beliefs,
@@ -27,6 +28,19 @@ impl<'a> DiscrepancyEncoding<'a> {
         }
     }
 
+    pub fn new_repeated(prevalent: &'a CNFFormula, dominated: &'a CNFFormula, n: usize) -> Self {
+        let renamed_dominated = std::iter::repeat(RenamedCNFFormula {
+            cnf_formula: dominated,
+            offset: prevalent.n_vars(),
+        })
+        .take(n)
+        .collect::<Vec<_>>();
+        DiscrepancyEncoding {
+            prevalent,
+            renamed_dominated,
+        }
+    }
+
     pub fn discrepancy_var_ranges(&self) -> impl Iterator<Item = Range<usize>> + '_ {
         self.renamed_dominated.iter().map(|renamed| {
             renamed.discrepancy_var_of(1)..1 + renamed.discrepancy_var_of(self.prevalent.n_vars())
@@ -37,25 +51,38 @@ impl<'a> DiscrepancyEncoding<'a> {
 impl ToCNFFormula for DiscrepancyEncoding<'_> {
     fn to_cnf_formula(&self) -> CNFFormula {
         let mut cnf_formula = self.prevalent.clone();
-        self.renamed_dominated.iter().for_each(|renamed| {
-            let renamed_cnf = renamed.to_cnf_formula();
-            renamed_cnf.merge_into(&mut cnf_formula);
-            (1..=self.prevalent.n_vars()).for_each(|i| {
-                let var = i as isize;
-                let renamed_var = renamed.renamed_var_of(i) as isize;
-                let discrepancy_var = renamed.discrepancy_var_of(i) as isize;
-                cnf_formula.add_clause_unchecked(vec![discrepancy_var, -renamed_var, var]);
-                cnf_formula.add_clause_unchecked(vec![discrepancy_var, renamed_var, -var]);
+        self.renamed_dominated
+            .iter()
+            .dedup_by(|c0, c1| {
+                std::ptr::eq(c0.cnf_formula, c1.cnf_formula) && c0.offset == c1.offset
+            })
+            .for_each(|renamed| {
+                let renamed_cnf = renamed.to_cnf_formula();
+                renamed_cnf.merge_into(&mut cnf_formula);
+                (1..=self.prevalent.n_vars()).for_each(|i| {
+                    let var = i as isize;
+                    let renamed_var = renamed.renamed_var_of(i) as isize;
+                    let discrepancy_var = renamed.discrepancy_var_of(i) as isize;
+                    cnf_formula.add_clause_unchecked(vec![discrepancy_var, -renamed_var, var]);
+                    cnf_formula.add_clause_unchecked(vec![discrepancy_var, renamed_var, -var]);
+                });
             });
-        });
         cnf_formula
     }
 
     fn n_vars(&self) -> usize {
-        (1 + 2 * self.renamed_dominated.len()) * self.prevalent.n_vars()
+        (1 + 2 * self
+            .renamed_dominated
+            .iter()
+            .dedup_by(|c0, c1| {
+                std::ptr::eq(c0.cnf_formula, c1.cnf_formula) && c0.offset == c1.offset
+            })
+            .count())
+            * self.prevalent.n_vars()
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct RenamedCNFFormula<'a> {
     cnf_formula: &'a CNFFormula,
     offset: usize,

@@ -1,2 +1,3 @@
-mod belief_merging_command;
-pub(crate) use belief_merging_command::BeliefMergingCommand;
+mod belief_commands;
+pub(crate) use belief_commands::BeliefMergingCommand;
+pub(crate) use belief_commands::BeliefRevisionCommand;

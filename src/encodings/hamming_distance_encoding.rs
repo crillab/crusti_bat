@@ -13,7 +13,7 @@ pub struct HammingDistanceEncoding<'a> {
 impl<'a> HammingDistanceEncoding<'a> {
     pub fn new(
         discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
-        var_weights: &'a VarWeights,
+        var_weights: Vec<&'a VarWeights>,
     ) -> Self {
         let (new_clauses, distance_vars) = encode_distances(discrepancy_encoding, var_weights);
         HammingDistanceEncoding {
@@ -26,14 +26,18 @@ impl<'a> HammingDistanceEncoding<'a> {
 
 fn encode_distances(
     discrepancy_encoding: &DiscrepancyEncoding,
-    var_weights: &VarWeights,
+    var_weights: Vec<&VarWeights>,
 ) -> (CNFFormula, Vec<Range<Variable>>) {
     let mut cnf = CNFFormula::default();
     cnf.add_vars(discrepancy_encoding.n_vars());
-    let weights = var_weights.iter().map(|w| w.weight()).collect::<Vec<_>>();
     let distance_vars = discrepancy_encoding
         .discrepancy_var_ranges()
-        .map(|r| {
+        .enumerate()
+        .map(|(i, r)| {
+            let mut weights = vec![0; r.len()];
+            var_weights[i]
+                .iter()
+                .for_each(|w| weights[w.thing() - 1] = w.weight());
             let range_decomposition = r.into_iter().map(|v| v..v + 1).collect::<Vec<_>>();
             WeightedParallelCounter::encode(&range_decomposition, &weights, &mut cnf)
         })
@@ -79,7 +83,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 2));
-        let distance_encoding = HammingDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            HammingDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(20, distance_encoding.n_vars());
         CNFDimacsWriter
@@ -119,7 +125,9 @@ mod tests {
         let prevalent = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &[]);
         let var_weights = VarWeights::new(2);
-        let distance_encoding = HammingDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            HammingDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(2, distance_encoding.n_vars());
         CNFDimacsWriter
@@ -141,7 +149,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 1));
-        let distance_encoding = HammingDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            HammingDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let distance_vars = distance_encoding.distance_vars().to_vec();
         assert_eq!(2, distance_vars.len());
         distance_vars.iter().for_each(|r| assert_eq!(2, r.len()));
@@ -157,7 +167,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 2));
-        let distance_encoding = HammingDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            HammingDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let distance_vars = distance_encoding.distance_vars().to_vec();
         assert_eq!(2, distance_vars.len());
         assert_eq!(3, distance_vars[0].len());

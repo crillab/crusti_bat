@@ -62,6 +62,9 @@ impl WeightedParallelCounter {
     ) -> Range<Variable> {
         let mut bitshift_sum = input_as_bitshift_sum(sum_operands, operand_weights);
         bitshift_sum.sort_unstable_by_key(|b| -(b.range_len() as isize));
+        if bitshift_sum.len() == 1 {
+            bitshift_sum.push(BitShiftRange(0..0, 0));
+        }
         while bitshift_sum.len() > 1 {
             let first = bitshift_sum.pop().unwrap();
             let second = bitshift_sum.pop().unwrap();
@@ -204,7 +207,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 1));
-        let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            DrasticDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
             WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 1], &mut cnf);
@@ -221,7 +226,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 2));
-        let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            DrasticDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
             WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 1], &mut cnf);
@@ -238,7 +245,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 1));
-        let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            DrasticDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
             WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 2], &mut cnf);
@@ -255,7 +264,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 2));
-        let distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let var_weights_vec = vec![&var_weights, &var_weights];
+        let distance_encoding =
+            DrasticDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let mut cnf = distance_encoding.to_cnf_formula();
         let counter_variables =
             WeightedParallelCounter::encode(distance_encoding.distance_vars(), &[1, 2], &mut cnf);

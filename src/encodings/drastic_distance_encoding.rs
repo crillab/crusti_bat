@@ -4,7 +4,7 @@ use std::ops::Range;
 
 pub struct DrasticDistanceEncoding<'a> {
     discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
-    var_weights: &'a VarWeights,
+    var_weights: Vec<&'a VarWeights>,
     discrepancy_var_ranges: Vec<Range<Variable>>,
     objectives_distance_vars: Vec<Range<Variable>>,
     objectives_rank_vars: Vec<Range<Variable>>,
@@ -13,10 +13,17 @@ pub struct DrasticDistanceEncoding<'a> {
 impl<'a> DrasticDistanceEncoding<'a> {
     pub fn new(
         discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
-        var_weights: &'a VarWeights,
+        var_weights: Vec<&'a VarWeights>,
     ) -> Self {
-        let n_distance_vars =
-            f64::log2((1 + var_weights.max_weight().unwrap_or_default()) as f64).ceil() as usize;
+        assert_eq!(
+            discrepancy_encoding.discrepancy_var_ranges().count(),
+            var_weights.len()
+        );
+        let n_distance_vars = var_weights
+            .iter()
+            .map(|vw| f64::log2((1 + vw.max_weight().unwrap_or_default()) as f64).ceil() as usize)
+            .max()
+            .unwrap_or_default();
         let discrepancy_var_ranges = discrepancy_encoding
             .discrepancy_var_ranges()
             .collect::<Vec<Range<Variable>>>();
@@ -26,9 +33,9 @@ impl<'a> DrasticDistanceEncoding<'a> {
                     ..1 + i * n_distance_vars + discrepancy_encoding.n_vars() + n_distance_vars
             })
             .collect::<Vec<Range<usize>>>();
-        let all_weights = var_weights.weights_sorted_dedup();
         let rank_vars = (0..discrepancy_var_ranges.len())
             .map(|i| {
+                let all_weights = var_weights[i].weights_sorted_dedup();
                 1 + discrepancy_var_ranges.len() * n_distance_vars
                     + i * all_weights.len()
                     + discrepancy_encoding.n_vars()
@@ -48,12 +55,15 @@ impl<'a> DrasticDistanceEncoding<'a> {
     }
 
     fn encode_ranks_cascades(&self, objective_index: usize, cnf_formula: &mut CNFFormula) {
-        (1..self.var_weights.weights_sorted_dedup().len()).for_each(|j| {
-            cnf_formula.add_clause_unchecked(vec![
-                -self.rank_lit(objective_index, j),
-                self.rank_lit(objective_index, j - 1),
-            ]);
-        });
+        (1..self.var_weights[objective_index]
+            .weights_sorted_dedup()
+            .len())
+            .for_each(|j| {
+                cnf_formula.add_clause_unchecked(vec![
+                    -self.rank_lit(objective_index, j),
+                    self.rank_lit(objective_index, j - 1),
+                ]);
+            });
     }
 
     fn encode_objective_lits_to_ranks(&self, objective_index: usize, cnf_formula: &mut CNFFormula) {
@@ -65,11 +75,11 @@ impl<'a> DrasticDistanceEncoding<'a> {
                     -(discrepancy_var as isize),
                     self.rank_lit(
                         objective_index,
-                        self.var_weights
+                        self.var_weights[objective_index]
                             .weights_sorted_dedup()
                             .iter()
                             .position(|w| {
-                                *w == self.var_weights[i + 1]
+                                *w == self.var_weights[objective_index][i + 1]
                                     .map(|w| w.weight())
                                     .unwrap_or_default()
                             })
@@ -85,7 +95,7 @@ impl<'a> DrasticDistanceEncoding<'a> {
 
     fn encode_ranks_to_values(&self, objective_index: usize, cnf_formula: &mut CNFFormula) {
         let rank_vars = &self.objectives_rank_vars[objective_index];
-        let weights = &self.var_weights.weights_sorted_dedup();
+        let weights = &self.var_weights[objective_index].weights_sorted_dedup();
         let distance_vars = &self.objectives_distance_vars[objective_index];
         (rank_vars.start..rank_vars.end - 1)
             .enumerate()
@@ -182,8 +192,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 2));
+        let var_weights_vec = vec![&var_weights, &var_weights];
         let drastic_distance_encoding =
-            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+            DrasticDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(18, drastic_distance_encoding.n_vars());
         CNFDimacsWriter
@@ -228,9 +239,7 @@ mod tests {
         let dimacs = "p cnf 2 2\n-1 -2 0\n1 2 0\n";
         let prevalent = CNFDimacsReader.read(dimacs.as_bytes()).unwrap();
         let discrepancy_encoding = DiscrepancyEncoding::new(&prevalent, &[]);
-        let var_weights = VarWeights::new(2);
-        let drastic_distance_encoding =
-            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+        let drastic_distance_encoding = DrasticDistanceEncoding::new(&discrepancy_encoding, vec![]);
         let mut writer = BufWriter::new(Vec::new());
         assert_eq!(2, drastic_distance_encoding.n_vars());
         CNFDimacsWriter
@@ -252,8 +261,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 1));
+        let var_weights_vec = vec![&var_weights, &var_weights];
         let drastic_distance_encoding =
-            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+            DrasticDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let distance_vars = drastic_distance_encoding.distance_vars().to_vec();
         assert_eq!(2, distance_vars.len());
         distance_vars.iter().for_each(|r| assert_eq!(1, r.len()));
@@ -269,8 +279,9 @@ mod tests {
         let mut var_weights = VarWeights::new(2);
         var_weights.add(Weighted::new(1, 1));
         var_weights.add(Weighted::new(2, 2));
+        let var_weights_vec = vec![&var_weights, &var_weights];
         let drastic_distance_encoding =
-            DrasticDistanceEncoding::new(&discrepancy_encoding, &var_weights);
+            DrasticDistanceEncoding::new(&discrepancy_encoding, var_weights_vec);
         let distance_vars = drastic_distance_encoding.distance_vars().to_vec();
         assert_eq!(2, distance_vars.len());
         assert_eq!(2, distance_vars[0].len());

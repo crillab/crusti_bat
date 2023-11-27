@@ -1,6 +1,6 @@
 mod app;
 
-use app::BeliefMergingCommand;
+use app::{BeliefMergingCommand, BeliefRevisionCommand};
 use crusti_app_helper::{AppHelper, Command};
 
 pub(crate) fn create_app_helper() -> AppHelper<'static> {
@@ -13,7 +13,10 @@ pub(crate) fn create_app_helper() -> AppHelper<'static> {
         authors,
         "crusti_bat, a belief aggregation tool.",
     );
-    let commands: Vec<Box<dyn Command>> = vec![Box::<BeliefMergingCommand>::default()];
+    let commands: Vec<Box<dyn Command>> = vec![
+        Box::<BeliefMergingCommand>::default(),
+        Box::<BeliefRevisionCommand>::default(),
+    ];
     for c in commands {
         app.add_command(c);
     }
