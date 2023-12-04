@@ -3,6 +3,7 @@ pub use belief_dimacs::MergingDimacsReader;
 pub use belief_dimacs::RevisionDimacsReader;
 
 mod cnf_dimacs;
+#[cfg(test)]
 pub use cnf_dimacs::CNFDimacsReader;
 pub use cnf_dimacs::CNFDimacsWriter;
 

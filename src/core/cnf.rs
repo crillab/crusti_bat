@@ -4,6 +4,7 @@ pub(crate) type Literal = isize;
 
 pub(crate) type Clause = Vec<Literal>;
 
+/// A CNF formula.
 #[derive(Clone, Default)]
 pub struct CNFFormula {
     n_vars: usize,

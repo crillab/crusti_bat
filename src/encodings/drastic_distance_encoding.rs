@@ -1,10 +1,14 @@
 use super::DistanceEncoding;
 use crate::{
-    core::{VarWeights, Variable},
-    CNFFormula, DiscrepancyEncoding, ToCNFFormula,
+    core::{ToCNFFormula, VarWeights, Variable},
+    CNFFormula, DiscrepancyEncoding,
 };
 use std::ops::Range;
 
+/// An encoding for the drastic distance.
+///
+/// Given a set of discrepancy variables related to a belief problem (see [`DiscrepancyEncoding`]) and variable weights,
+/// this structure encodes as a binary decomposition the maximal weight involved in the discrepancy variables set to true.
 pub struct DrasticDistanceEncoding<'a> {
     discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
     var_weights: Vec<&'a VarWeights>,
@@ -14,6 +18,7 @@ pub struct DrasticDistanceEncoding<'a> {
 }
 
 impl<'a> DrasticDistanceEncoding<'a> {
+    /// Builds a new drastic distance encoding.
     pub fn new(
         discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
         var_weights: Vec<&'a VarWeights>,

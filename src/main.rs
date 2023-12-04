@@ -1,3 +1,5 @@
+//! See the library documentation for more information.
+
 mod app;
 
 use app::{BeliefMergingCommand, BeliefRevisionCommand};

@@ -1,10 +1,15 @@
 use super::DistanceEncoding;
 use crate::{
-    core::Clause, encodings::WeightedParallelCounter, AggregatorEncoding, CNFFormula, MaxSatSolver,
-    ToCNFFormula, Weighted,
+    core::{Clause, ToCNFFormula},
+    encodings::WeightedParallelCounter,
+    AggregatorEncoding, CNFFormula, MaxSatSolver, Weighted,
 };
 use anyhow::{Context, Result};
 
+/// An aggregator encoding that applies the sum to a set of measures and computes the minimal sum value using a MaxSAT solver.
+///
+/// Given a set of weighted distances related to a belief problem (see [`DistanceEncoding`]), this structure encodes as a binary decomposition the sum of the weighted distances.
+/// In addition to the encoding step, this object computes the minimal aggregation value and can enforce it by adding clauses to the initial problem.
 pub struct SumAggregatorEncoding<'a> {
     maxsat_solver: Box<dyn MaxSatSolver>,
     distance_encoding: &'a dyn DistanceEncoding,
@@ -12,6 +17,7 @@ pub struct SumAggregatorEncoding<'a> {
 }
 
 impl<'a> SumAggregatorEncoding<'a> {
+    /// Builds a new sum aggregation encoding.
     pub fn new(
         distance_encoding: &'a dyn DistanceEncoding,
         distance_weights: &'a [usize],

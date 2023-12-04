@@ -1,4 +1,7 @@
-use crate::{core::Variable, CNFFormula, ToCNFFormula};
+use crate::{
+    core::{ToCNFFormula, Variable},
+    CNFFormula,
+};
 use itertools::Itertools;
 use std::ops::Range;
 
@@ -13,6 +16,9 @@ pub struct DiscrepancyEncoding<'a> {
 }
 
 impl<'a> DiscrepancyEncoding<'a> {
+    /// Builds a discrepancy encoding from a prevalent knowledge and a set a beliefs.
+    ///
+    /// Each belief is associated with a new fresh set of discrepancy variables.
     pub fn new(prevalent: &'a CNFFormula, dominated: &'a [&CNFFormula]) -> Self {
         let renamed_dominated: Vec<RenamedCNFFormula<'a>> = dominated
             .iter()
@@ -28,6 +34,10 @@ impl<'a> DiscrepancyEncoding<'a> {
         }
     }
 
+    /// Builds a discrepancy encoding from a prevalent knowledge and a single belief base.
+    ///
+    /// A set of discrepancy variables is constructed for the belief base.
+    /// This structure stores this set `n` times, just like `n` equivalent belief bases were involved.
     pub fn new_repeated(prevalent: &'a CNFFormula, dominated: &'a CNFFormula, n: usize) -> Self {
         let renamed_dominated = std::iter::repeat(RenamedCNFFormula {
             cnf_formula: dominated,
@@ -41,6 +51,7 @@ impl<'a> DiscrepancyEncoding<'a> {
         }
     }
 
+    /// Returns an iterator to the set of discrepancy variables stored in this structure.
     pub fn discrepancy_var_ranges(&self) -> impl Iterator<Item = Range<usize>> + '_ {
         self.renamed_dominated.iter().map(|renamed| {
             renamed.discrepancy_var_of(1)..1 + renamed.discrepancy_var_of(self.prevalent.n_vars())

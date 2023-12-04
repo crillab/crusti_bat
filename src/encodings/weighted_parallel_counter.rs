@@ -193,8 +193,8 @@ fn sum_bits(
 mod tests {
     use super::*;
     use crate::{
-        core::VarWeights, DiscrepancyEncoding, DistanceEncoding, DrasticDistanceEncoding,
-        ToCNFFormula, Weighted,
+        core::{ToCNFFormula, VarWeights},
+        DiscrepancyEncoding, DistanceEncoding, DrasticDistanceEncoding, Weighted,
     };
 
     #[test]

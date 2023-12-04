@@ -1,10 +1,14 @@
 use super::WeightedParallelCounter;
 use crate::{
-    core::{VarWeights, Variable},
-    CNFFormula, DiscrepancyEncoding, DistanceEncoding, ToCNFFormula,
+    core::{ToCNFFormula, VarWeights, Variable},
+    CNFFormula, DiscrepancyEncoding, DistanceEncoding,
 };
 use std::ops::Range;
 
+/// An encoding for the hamming distance.
+///
+/// Given a set of discrepancy variables related to a belief problem (see [`DiscrepancyEncoding`]) and variable weights,
+/// this structure encodes as a binary decomposition the sum of the weights involved in the discrepancy variables set to true.
 pub struct HammingDistanceEncoding<'a> {
     discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
     new_clauses: CNFFormula,
@@ -12,6 +16,7 @@ pub struct HammingDistanceEncoding<'a> {
 }
 
 impl<'a> HammingDistanceEncoding<'a> {
+    /// Builds a new hamming distance encoding.
     pub fn new(
         discrepancy_encoding: &'a DiscrepancyEncoding<'a>,
         var_weights: Vec<&'a VarWeights>,

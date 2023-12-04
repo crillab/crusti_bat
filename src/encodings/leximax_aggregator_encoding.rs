@@ -1,11 +1,15 @@
 use crate::{
-    core::{Literal, Variable},
-    AggregatorEncoding, CNFFormula, DistanceEncoding, MaxSatSolver, ToCNFFormula, Weighted,
+    core::{Literal, ToCNFFormula, Variable},
+    AggregatorEncoding, CNFFormula, DistanceEncoding, MaxSatSolver, Weighted,
 };
 use anyhow::Result;
 use pblib_rs::PB2CNF;
 use std::{fmt::Display, ops::Range};
 
+/// An aggregator encoding that applies the leximin or the leximax to a set of measures and computes the minimal value using a MaxSAT solver.
+///
+/// Given a set of weighted distances related to a belief problem (see [`DistanceEncoding`]), this structure produces an encoding that sorts the distances given (i) their value and (ii) their weight.
+/// In addition to the encoding step, this object computes the minimal aggregation value and can enforce it by adding clauses to the initial problem.
 pub struct LexiAggregatorEncoding<'a> {
     maxsat_solver: Box<dyn MaxSatSolver>,
     distance_encoding: &'a dyn DistanceEncoding,
@@ -15,6 +19,7 @@ pub struct LexiAggregatorEncoding<'a> {
 }
 
 impl<'a> LexiAggregatorEncoding<'a> {
+    /// Builds a new leximax encoding.
     pub fn new_for_leximax(
         distance_encoding: &'a dyn DistanceEncoding,
         distance_weights: &'a [usize],
@@ -28,6 +33,7 @@ impl<'a> LexiAggregatorEncoding<'a> {
         )
     }
 
+    /// Builds a new leximin encoding.
     pub fn new_for_leximin(
         distance_encoding: &'a dyn DistanceEncoding,
         distance_weights: &'a [usize],

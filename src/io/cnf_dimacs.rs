@@ -1,21 +1,23 @@
 use crate::CNFFormula;
 use anyhow::{Context, Result};
-use std::io::{Read, Write};
-use varisat_dimacs::DimacsParser;
+use std::io::Write;
 
 /// A structure used to read a DIMACS formatted CNF formula.
 ///
 /// The preamble must be exact in terms of number of variables and constraints.
 /// In case there is an issue in one of these values, an error is returned.
+#[cfg(test)]
 #[derive(Default)]
 pub struct CNFDimacsReader;
 
+#[cfg(test)]
 impl CNFDimacsReader {
     pub fn read<R>(&self, reader: R) -> Result<CNFFormula>
     where
-        R: Read,
+        R: std::io::Read,
     {
-        let formula = DimacsParser::parse(reader).context("while parsing a CNF formula")?;
+        let formula =
+            varisat_dimacs::DimacsParser::parse(reader).context("while parsing a CNF formula")?;
         let n_vars = formula.var_count();
         let clauses = formula
             .iter()
@@ -30,6 +32,9 @@ impl CNFDimacsReader {
 pub struct CNFDimacsWriter;
 
 impl CNFDimacsWriter {
+    /// Writes a CNF formula.
+    ///
+    /// An error is returned if an I/O error occurs.
     pub fn write(&self, writer: &mut dyn Write, cnf_formula: &CNFFormula) -> Result<()> {
         let context = "while writing a CNF formula";
         writeln!(

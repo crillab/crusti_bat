@@ -16,10 +16,14 @@ pub use sum_aggregator_encoding::SumAggregatorEncoding;
 mod weighted_parallel_counter;
 pub use weighted_parallel_counter::WeightedParallelCounter;
 
-use crate::{core::Variable, CNFFormula, ToCNFFormula};
+use crate::{
+    core::{ToCNFFormula, Variable},
+    CNFFormula,
+};
 use anyhow::Result;
 use std::ops::Range;
 
+/// A trait implemented by structures encoding distances.
 pub trait DistanceEncoding: ToCNFFormula {
     /// Returns the variables encoding the distances.
     ///
@@ -29,6 +33,7 @@ pub trait DistanceEncoding: ToCNFFormula {
     fn distance_vars(&self) -> &[Range<Variable>];
 }
 
+/// A trait implemented by structures aggregating distances.
 pub trait AggregatorEncoding<T>: ToCNFFormula {
     /// Returns the encoding which distances are aggregated.
     fn distance_encoding(&self) -> &dyn DistanceEncoding;
