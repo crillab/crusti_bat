@@ -1,4 +1,5 @@
-use crate::{CNFFormula, Clause, WCNFDimacs2022Writer, Weighted};
+use super::Clause;
+use crate::{io::WCNFDimacs2022Writer, CNFFormula, Weighted};
 use anyhow::{anyhow, Context, Result};
 use std::{
     fs,

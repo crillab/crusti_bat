@@ -1,6 +1,7 @@
 use super::WeightedParallelCounter;
 use crate::{
-    core::VarWeights, CNFFormula, DiscrepancyEncoding, DistanceEncoding, ToCNFFormula, Variable,
+    core::{VarWeights, Variable},
+    CNFFormula, DiscrepancyEncoding, DistanceEncoding, ToCNFFormula,
 };
 use std::ops::Range;
 
@@ -66,7 +67,7 @@ impl DistanceEncoding for HammingDistanceEncoding<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CNFDimacsReader, CNFDimacsWriter, DiscrepancyEncoding, Weighted};
+    use crate::{io::CNFDimacsReader, CNFDimacsWriter, DiscrepancyEncoding, Weighted};
     use std::io::BufWriter;
 
     #[test]

@@ -1,6 +1,6 @@
 use crate::{
-    AggregatorEncoding, CNFFormula, DistanceEncoding, Literal, MaxSatSolver, ToCNFFormula,
-    Variable, Weighted,
+    core::{Literal, Variable},
+    AggregatorEncoding, CNFFormula, DistanceEncoding, MaxSatSolver, ToCNFFormula, Weighted,
 };
 use anyhow::Result;
 use pblib_rs::PB2CNF;

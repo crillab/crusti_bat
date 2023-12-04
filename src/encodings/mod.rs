@@ -16,7 +16,7 @@ pub use sum_aggregator_encoding::SumAggregatorEncoding;
 mod weighted_parallel_counter;
 pub use weighted_parallel_counter::WeightedParallelCounter;
 
-use crate::{CNFFormula, ToCNFFormula, Variable};
+use crate::{core::Variable, CNFFormula, ToCNFFormula};
 use anyhow::Result;
 use std::ops::Range;
 

@@ -1,8 +1,8 @@
-pub type Variable = usize;
+pub(crate) type Variable = usize;
 
-pub type Literal = isize;
+pub(crate) type Literal = isize;
 
-pub type Clause = Vec<Literal>;
+pub(crate) type Clause = Vec<Literal>;
 
 #[derive(Clone, Default)]
 pub struct CNFFormula {
@@ -95,7 +95,7 @@ pub trait ToCNFFormula {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CNFDimacsReader, CNFDimacsWriter};
+    use crate::{io::CNFDimacsReader, CNFDimacsWriter};
     use std::io::BufWriter;
 
     #[test]

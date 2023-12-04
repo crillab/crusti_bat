@@ -1,4 +1,4 @@
-use crate::{CNFFormula, ToCNFFormula, Variable};
+use crate::{core::Variable, CNFFormula, ToCNFFormula};
 use itertools::Itertools;
 use std::ops::Range;
 
@@ -114,7 +114,7 @@ impl ToCNFFormula for RenamedCNFFormula<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CNFDimacsReader, CNFDimacsWriter};
+    use crate::{io::CNFDimacsReader, CNFDimacsWriter};
     use std::io::BufWriter;
 
     #[test]

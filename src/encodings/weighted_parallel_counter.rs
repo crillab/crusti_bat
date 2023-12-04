@@ -1,4 +1,4 @@
-use crate::{CNFFormula, Variable};
+use crate::{core::Variable, CNFFormula};
 use std::ops::Range;
 
 pub struct WeightedParallelCounter;

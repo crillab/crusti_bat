@@ -1,6 +1,6 @@
 use crate::{
-    core::{RevisionProblem, VarWeights},
-    CNFFormula, Clause, MergingProblem, Variable, Weighted,
+    core::{Clause, MergingProblem, RevisionProblem, VarWeights, Variable},
+    CNFFormula, Weighted,
 };
 use anyhow::{anyhow, Context, Result};
 use rustc_hash::FxHashMap;
@@ -431,7 +431,7 @@ fn read_belief_base_weight(words: &mut SplitWhitespace) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CNFDimacsWriter, Variable};
+    use crate::CNFDimacsWriter;
     use std::io::BufWriter;
 
     #[test]

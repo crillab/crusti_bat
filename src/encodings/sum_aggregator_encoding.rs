@@ -1,6 +1,6 @@
 use super::DistanceEncoding;
 use crate::{
-    encodings::WeightedParallelCounter, AggregatorEncoding, CNFFormula, Clause, MaxSatSolver,
+    core::Clause, encodings::WeightedParallelCounter, AggregatorEncoding, CNFFormula, MaxSatSolver,
     ToCNFFormula, Weighted,
 };
 use anyhow::{Context, Result};

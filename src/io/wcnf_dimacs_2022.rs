@@ -1,4 +1,4 @@
-use crate::{CNFFormula, Clause, Weighted};
+use crate::{core::Clause, CNFFormula, Weighted};
 use anyhow::{Context, Result};
 use std::io::Write;
 

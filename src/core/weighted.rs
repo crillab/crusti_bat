@@ -1,4 +1,4 @@
-use crate::Variable;
+use super::Variable;
 use std::{
     cell::{Ref, RefCell},
     ops::{Deref, Index},

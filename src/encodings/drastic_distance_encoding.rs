@@ -1,5 +1,8 @@
 use super::DistanceEncoding;
-use crate::{core::VarWeights, CNFFormula, DiscrepancyEncoding, ToCNFFormula, Variable};
+use crate::{
+    core::{VarWeights, Variable},
+    CNFFormula, DiscrepancyEncoding, ToCNFFormula,
+};
 use std::ops::Range;
 
 pub struct DrasticDistanceEncoding<'a> {
@@ -175,7 +178,7 @@ fn encode_rank_value(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CNFDimacsReader, CNFDimacsWriter, DiscrepancyEncoding, Weighted};
+    use crate::{io::CNFDimacsReader, CNFDimacsWriter, DiscrepancyEncoding, Weighted};
     use std::io::BufWriter;
 
     #[test]

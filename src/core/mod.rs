@@ -1,9 +1,9 @@
 mod cnf;
 pub use cnf::CNFFormula;
-pub use cnf::Clause;
-pub use cnf::Literal;
+pub(crate) use cnf::Clause;
+pub(crate) use cnf::Literal;
 pub use cnf::ToCNFFormula;
-pub use cnf::Variable;
+pub(crate) use cnf::Variable;
 
 mod maxsat_solver;
 pub use maxsat_solver::ExternalMaxSatSolver;

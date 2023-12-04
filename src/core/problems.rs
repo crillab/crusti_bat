@@ -1,5 +1,5 @@
-use super::VarWeights;
-use crate::{CNFFormula, Variable, Weighted};
+use super::{VarWeights, Variable};
+use crate::{CNFFormula, Weighted};
 
 /// A structure used to handle belief merging problems.
 pub struct MergingProblem {
