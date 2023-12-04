@@ -196,7 +196,7 @@ fn clap_subcommand_for<'a>(
                 .long("solver")
                 .empty_values(false)
                 .multiple(false)
-                .help("the path to the MaxSAT solver")
+                .help("the path to the MaxSAT solver (compatible with the MaxSAT Evaluation 2023 format)")
                 .required(true),
         )
         .arg(crusti_app_helper::logging_level_cli_arg())

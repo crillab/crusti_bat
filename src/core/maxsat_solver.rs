@@ -12,6 +12,9 @@ use tempfile::Builder;
 
 /// An interface for MaxSAT solvers.
 pub trait MaxSatSolver {
+    /// Solves a MaxSAT instance.
+    ///
+    /// The result is a pair containing the optimal value and an optimal model, given as a list of DIMACS literals.
     fn solve(
         &self,
         wcnf_hard: &CNFFormula,
