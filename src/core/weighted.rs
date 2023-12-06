@@ -85,7 +85,7 @@ impl VarWeights {
             let mut weights = self
                 .weights
                 .iter()
-                .filter_map(|opt| opt.map(|w| w.weight()))
+                .map(|opt| opt.map(|w| w.weight()).unwrap_or_default())
                 .collect::<Vec<usize>>();
             weights.sort_unstable();
             weights.dedup();
