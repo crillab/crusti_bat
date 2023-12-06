@@ -31,6 +31,10 @@ pub trait DistanceEncoding: ToCNFFormula {
     /// Each range defines a list of variables that encodes a binary decomposition of the objective function value.
     /// The first variable of the range is the least significant bit, the last is the most significant one.
     fn distance_vars(&self) -> &[Range<Variable>];
+
+    /// Returns a description of some auxiliary variables used in the encodings.
+    /// This description is made of couples linking sets of variable ranges with their function.
+    fn auxiliary_vars(&self) -> Vec<(&'static str, Vec<Range<Variable>>)>;
 }
 
 /// A trait implemented by structures aggregating distances.

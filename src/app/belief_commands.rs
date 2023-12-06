@@ -306,4 +306,13 @@ fn create_distance_encoding<'a>(
         )
     );
     encoding
+        .auxiliary_vars()
+        .iter()
+        .for_each(|(description, ranges)| {
+            debug!(
+                "{description} encoding with vars {}",
+                format_var_ranges(ranges.iter().map(|r| (r.start, r.end - 1)))
+            )
+        });
+    encoding
 }

@@ -67,6 +67,10 @@ impl DistanceEncoding for HammingDistanceEncoding<'_> {
     fn distance_vars(&self) -> &[Range<Variable>] {
         &self.objectives_distance_vars
     }
+
+    fn auxiliary_vars(&self) -> Vec<(&'static str, Vec<Range<Variable>>)> {
+        Vec::new()
+    }
 }
 
 #[cfg(test)]

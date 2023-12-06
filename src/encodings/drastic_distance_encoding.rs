@@ -155,6 +155,14 @@ impl DistanceEncoding for DrasticDistanceEncoding<'_> {
     fn distance_vars(&self) -> &[Range<Variable>] {
         &self.objectives_distance_vars
     }
+
+    fn auxiliary_vars(&self) -> Vec<(&'static str, Vec<Range<Variable>>)> {
+        vec![(
+            "ranking (in drastic distance)",
+            self.objectives_rank_vars.clone(),
+        )]
+    }
+}
 }
 
 fn encode_rank_value(
