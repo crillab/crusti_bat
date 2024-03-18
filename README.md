@@ -2,14 +2,13 @@
 
 A Belief Aggregation Tool.
 
-This project is a new implementation of two existing tools dedicated to belief bases, one dedicated to belief merging ([bm2cnf](http://www.cril.univ-artois.fr/kc/bm2cnf.html)) and one to belief revision ([br2cnf](http://www.cril.univ-artois.fr/kc/br2cnf.html)).
+This project is a new implementation of two existing tools dedicated to belief bases, one dedicated to belief merging ([bm2cnf](https://www.cril.univ-artois.fr/software/bm2cnf/)) and one to belief revision ([br2cnf](https://www.cril.univ-artois.fr/software/br2cnf/)).
 
 ## Compiling/installing crusti_bat
 
 Crusti_bat requires a recent version of the Rust toolchain (>= 1.66.1).
 See [rust-lang.org](https://www.rust-lang.org/tools/install) for more information on how to install Rust.
 
-You can install the latest release from `crates.io` with `cargo install crusti_bat` (or update it with `cargo install crusti_bat --force`).
 To build from source, run `cargo build --release` to compile the binary. It will be set in the `target/release` directory.
 
 ## How to use
@@ -52,3 +51,4 @@ crusti_bat belief-revision -i revision_instance.cnfs -d drastic -a gmax -s cashw
 
 crusti_bat is developed at CRIL (Univ. Artois & CNRS).
 It is made available under the terms of the GNU GPLv3 license.
+
